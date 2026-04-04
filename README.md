@@ -6,6 +6,7 @@
 ![Status](https://img.shields.io/badge/status-active%20development-2E8B57)
 ![Docs](https://img.shields.io/badge/docs-structured-4169E1)
 ![License](https://img.shields.io/badge/license-see%20project%20files-696969)
+![CI](https://github.com/ChrisLee0721/OSynapptic-FX/actions/workflows/build.yml/badge.svg)
 
 ![ESP32](https://img.shields.io/badge/ESP32-supported-E7352C?logo=espressif&logoColor=white)
 ![STM32](https://img.shields.io/badge/STM32-supported-03234B?logo=stmicroelectronics&logoColor=white)
