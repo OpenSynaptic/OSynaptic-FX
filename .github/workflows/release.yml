@@ -4,9 +4,18 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (for example: v0.2.0)"
+        required: true
+        type: string
 
 permissions:
   contents: write
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
 jobs:
   linux-package:
@@ -17,12 +26,12 @@ jobs:
         run: |
           cmake -S . -B build-linux -DOSFX_ENABLE_LTO=OFF -DOSFX_ENABLE_FILE_IO=OFF -DOSFX_ENABLE_CLI=OFF
           cmake --build build-linux --config Release
-          cp build-linux/lib/libosfx_core.a osfx-${{ github.ref_name }}-linux.a
+          cp build-linux/lib/libosfx_core.a osfx-${{ env.RELEASE_TAG }}-linux.a
       - name: Upload linux artifact
         uses: actions/upload-artifact@v4
         with:
           name: pkg-linux
-          path: osfx-${{ github.ref_name }}-linux.a
+          path: osfx-${{ env.RELEASE_TAG }}-linux.a
 
   avr-package:
     runs-on: ubuntu-latest
@@ -36,12 +45,12 @@ jobs:
           for c in src/*.c; do
             avr-gcc -mmcu=atmega328p -std=c99 -Os -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-avr/obj/$(basename "${c%.c}").o"
           done
-          avr-ar rcs osfx-${{ github.ref_name }}-avr.a build-avr/obj/*.o
+          avr-ar rcs osfx-${{ env.RELEASE_TAG }}-avr.a build-avr/obj/*.o
       - name: Upload avr artifact
         uses: actions/upload-artifact@v4
         with:
           name: pkg-avr
-          path: osfx-${{ github.ref_name }}-avr.a
+          path: osfx-${{ env.RELEASE_TAG }}-avr.a
 
   esp32-package:
     runs-on: ubuntu-latest
@@ -58,12 +67,12 @@ jobs:
           for c in src/*.c; do
             xtensa-esp32-elf-gcc -std=c99 -Os -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-esp32/obj/$(basename "${c%.c}").o"
           done
-          xtensa-esp32-elf-ar rcs osfx-${{ github.ref_name }}-esp32.a build-esp32/obj/*.o
+          xtensa-esp32-elf-ar rcs osfx-${{ env.RELEASE_TAG }}-esp32.a build-esp32/obj/*.o
       - name: Upload esp32 artifact
         uses: actions/upload-artifact@v4
         with:
           name: pkg-esp32
-          path: osfx-${{ github.ref_name }}-esp32.a
+          path: osfx-${{ env.RELEASE_TAG }}-esp32.a
 
   cortexm-package:
     runs-on: ubuntu-latest
@@ -77,12 +86,12 @@ jobs:
           for c in src/*.c; do
             arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -std=c99 -Os -ffreestanding -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-cortexm/obj/$(basename "${c%.c}").o"
           done
-          arm-none-eabi-ar rcs osfx-${{ github.ref_name }}-cortexm.a build-cortexm/obj/*.o
+          arm-none-eabi-ar rcs osfx-${{ env.RELEASE_TAG }}-cortexm.a build-cortexm/obj/*.o
       - name: Upload cortexm artifact
         uses: actions/upload-artifact@v4
         with:
           name: pkg-cortexm
-          path: osfx-${{ github.ref_name }}-cortexm.a
+          path: osfx-${{ env.RELEASE_TAG }}-cortexm.a
 
   riscv-package:
     runs-on: ubuntu-latest
@@ -96,12 +105,12 @@ jobs:
           for c in src/*.c; do
             riscv64-unknown-elf-gcc -march=rv32imac -mabi=ilp32 -specs=picolibc.specs -std=c99 -Os -ffreestanding -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-riscv/obj/$(basename "${c%.c}").o"
           done
-          riscv64-unknown-elf-ar rcs osfx-${{ github.ref_name }}-riscv32.a build-riscv/obj/*.o
+          riscv64-unknown-elf-ar rcs osfx-${{ env.RELEASE_TAG }}-riscv32.a build-riscv/obj/*.o
       - name: Upload riscv artifact
         uses: actions/upload-artifact@v4
         with:
           name: pkg-riscv
-          path: osfx-${{ github.ref_name }}-riscv32.a
+          path: osfx-${{ env.RELEASE_TAG }}-riscv32.a
 
   rp2040-package:
     runs-on: ubuntu-latest
@@ -115,12 +124,12 @@ jobs:
           for c in src/*.c; do
             arm-none-eabi-gcc -mcpu=cortex-m0plus -mthumb -std=c99 -Os -ffreestanding -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-rp2040/obj/$(basename "${c%.c}").o"
           done
-          arm-none-eabi-ar rcs osfx-${{ github.ref_name }}-rp2040.a build-rp2040/obj/*.o
+          arm-none-eabi-ar rcs osfx-${{ env.RELEASE_TAG }}-rp2040.a build-rp2040/obj/*.o
       - name: Upload rp2040 artifact
         uses: actions/upload-artifact@v4
         with:
           name: pkg-rp2040
-          path: osfx-${{ github.ref_name }}-rp2040.a
+          path: osfx-${{ env.RELEASE_TAG }}-rp2040.a
 
   android-package:
     runs-on: ubuntu-latest
@@ -140,12 +149,12 @@ jobs:
           for c in src/*.c; do
             "$CC" -std=c99 -Os -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-android/obj/$(basename "${c%.c}").o"
           done
-          "$AR" rcs osfx-${{ github.ref_name }}-android.a build-android/obj/*.o
+          "$AR" rcs osfx-${{ env.RELEASE_TAG }}-android.a build-android/obj/*.o
       - name: Upload android artifact
         uses: actions/upload-artifact@v4
         with:
           name: pkg-android
-          path: osfx-${{ github.ref_name }}-android.a
+          path: osfx-${{ env.RELEASE_TAG }}-android.a
 
   ios-package:
     runs-on: macos-latest
@@ -157,12 +166,12 @@ jobs:
           for c in src/*.c; do
             xcrun --sdk iphoneos clang -arch arm64 -std=c99 -Os -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-ios/obj/$(basename "${c%.c}").o"
           done
-          libtool -static -o osfx-${{ github.ref_name }}-ios.a build-ios/obj/*.o
+          libtool -static -o osfx-${{ env.RELEASE_TAG }}-ios.a build-ios/obj/*.o
       - name: Upload ios artifact
         uses: actions/upload-artifact@v4
         with:
           name: pkg-ios
-          path: osfx-${{ github.ref_name }}-ios.a
+          path: osfx-${{ env.RELEASE_TAG }}-ios.a
 
   wasm-package:
     runs-on: ubuntu-latest
@@ -176,12 +185,12 @@ jobs:
           for c in src/*.c; do
             emcc -std=c99 -Os -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-wasm/obj/$(basename "${c%.c}").o"
           done
-          emar rcs osfx-${{ github.ref_name }}-wasm.a build-wasm/obj/*.o
+          emar rcs osfx-${{ env.RELEASE_TAG }}-wasm.a build-wasm/obj/*.o
       - name: Upload wasm artifact
         uses: actions/upload-artifact@v4
         with:
           name: pkg-wasm
-          path: osfx-${{ github.ref_name }}-wasm.a
+          path: osfx-${{ env.RELEASE_TAG }}-wasm.a
 
   stm32-package:
     runs-on: ubuntu-latest
@@ -195,12 +204,12 @@ jobs:
           for c in src/*.c; do
             arm-none-eabi-gcc -mcpu=cortex-m3 -mthumb -std=c99 -Os -ffreestanding -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-stm32/obj/$(basename "${c%.c}").o"
           done
-          arm-none-eabi-ar rcs osfx-${{ github.ref_name }}-stm32.a build-stm32/obj/*.o
+          arm-none-eabi-ar rcs osfx-${{ env.RELEASE_TAG }}-stm32.a build-stm32/obj/*.o
       - name: Upload stm32 artifact
         uses: actions/upload-artifact@v4
         with:
           name: pkg-stm32
-          path: osfx-${{ github.ref_name }}-stm32.a
+          path: osfx-${{ env.RELEASE_TAG }}-stm32.a
 
   publish:
     needs: [linux-package, avr-package, esp32-package, cortexm-package, stm32-package, riscv-package, rp2040-package, android-package, ios-package, wasm-package]
@@ -212,5 +221,7 @@ jobs:
       - name: Publish GitHub release assets
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: OSynapptic-FX ${{ env.RELEASE_TAG }}
           files: dist/**/*.a
           overwrite_files: true
