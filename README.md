@@ -7,6 +7,7 @@
 ![Arduino](https://img.shields.io/badge/Arduino-Library-00979D?logo=arduino&logoColor=white)
 ![Status](https://img.shields.io/badge/status-stable-2E8B57)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
+[![Arduino Library](https://www.ardu-badge.com/badge/OSynaptic-FX.svg?)](https://www.ardu-badge.com/OSynaptic-FX)
 
 ![ESP32](https://img.shields.io/badge/ESP32-supported-E7352C?logo=espressif&logoColor=white)
 ![STM32](https://img.shields.io/badge/STM32-supported-03234B?logo=stmicroelectronics&logoColor=white)
