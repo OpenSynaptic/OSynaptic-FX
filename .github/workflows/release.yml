@@ -318,6 +318,26 @@ jobs:
           name: pkg-macos-x86_64
           path: libosfx_x86_64_macos.a
 
+  # ─── Platform: macOS ARM64 (Apple Silicon) ────────────────────────────────
+  macos-arm64-package:
+    name: Build (macos-arm64)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build macos-arm64 library
+        run: |
+          mkdir -p build-macos-arm64/obj
+          for c in src/*.c; do
+            clang -arch arm64 -std=c99 -O2 -Iinclude \
+              -c "$c" -o "build-macos-arm64/obj/$(basename "${c%.c}").o"
+          done
+          libtool -static -o libosfx_macos_arm64.a build-macos-arm64/obj/*.o
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkg-macos-arm64
+          path: libosfx_macos_arm64.a
+
   # ─── Publish GitHub Release ───────────────────────────────────────────────
   publish:
     name: Publish GitHub Release
@@ -334,6 +354,7 @@ jobs:
       - linux-x86_64-package
       - windows-x86_64-package
       - macos-x86_64-package
+      - macos-arm64-package
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -402,22 +423,40 @@ jobs:
           echo "=== Arduino ZIP: ${ZIP}  ($(wc -c < "${ZIP}") bytes) ==="
           unzip -l "${ZIP}" | grep "libOSynapticFX"
 
-      # ── Rename standalone (non-Arduino) platform binaries ──────────────────
-      - name: Rename standalone platform binaries
+      # ── Rename all platform binaries with versioned names ────────────────────
+      # Format: osfx-{version}-{platform}.a  (or .lib for Windows)
+      - name: Rename platform binaries
         shell: bash
         run: |
+          VER="${{ env.RELEASE_TAG }}"
+          VER="${VER#v}"
           rename_lib() {
             local artifact="$1" dest="$2"
             local f
             f=$(find "dist/${artifact}" -type f \( -name "*.a" -o -name "*.lib" \) 2>/dev/null | head -1)
             if [ -n "$f" ]; then
               cp "$f" "$dest"
-              echo "  [standalone] $dest"
+              echo "  [release] $dest"
+            else
+              echo "  [skip]    dist/${artifact} — no binary found"
             fi
           }
-          rename_lib pkg-linux-x86_64    libosfx_x86_64_linux.a
-          rename_lib pkg-windows-x86_64  libosfx_x86_64_windows.lib
-          rename_lib pkg-macos-x86_64    libosfx_x86_64_macos.a
+          # Embedded targets (also inside Arduino ZIP; published separately here)
+          rename_lib pkg-arm-cm0        "osfx-${VER}-arm-cm0.a"
+          rename_lib pkg-arm-cm3        "osfx-${VER}-arm-cm3.a"
+          rename_lib pkg-arm-cm4        "osfx-${VER}-arm-cm4.a"
+          rename_lib pkg-arm-cm7        "osfx-${VER}-arm-cm7.a"
+          rename_lib pkg-arm-cm33       "osfx-${VER}-arm-cm33.a"
+          rename_lib pkg-riscv          "osfx-${VER}-riscv32.a"
+          rename_lib pkg-xtensa         "osfx-${VER}-xtensa-esp32.a"
+          # AVR: atmega328p (≤32 KB Flash, rjmp/rcall) vs atmega2560 (256 KB Flash, jmp/call)
+          rename_lib pkg-avr-small      "osfx-${VER}-avr-atmega328p.a"
+          rename_lib pkg-avr-large      "osfx-${VER}-avr-atmega2560.a"
+          # Host/desktop targets
+          rename_lib pkg-linux-x86_64   "osfx-${VER}-linux-x86_64.a"
+          rename_lib pkg-windows-x86_64 "osfx-${VER}-windows-x86_64.lib"
+          rename_lib pkg-macos-x86_64   "osfx-${VER}-macos-x86_64.a"
+          rename_lib pkg-macos-arm64    "osfx-${VER}-macos-arm64.a"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -427,9 +466,8 @@ jobs:
           body_path: RELEASE_NOTES_v1.0.0.md
           files: |
             ${{ env.ZIP_NAME }}
-            libosfx_x86_64_linux.a
-            libosfx_x86_64_windows.lib
-            libosfx_x86_64_macos.a
+            osfx-*.a
+            osfx-*.lib
           draft: false
           prerelease: ${{ contains(env.RELEASE_TAG, '-rc') || contains(env.RELEASE_TAG, '-beta') || contains(env.RELEASE_TAG, '-alpha') }}
           overwrite_files: true
