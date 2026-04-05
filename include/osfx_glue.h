@@ -29,6 +29,10 @@ typedef struct osfx_glue_config {
     void* pf_emit_ctx;
 } osfx_glue_config;
 
+/* osfx_glue_ctx embeds several large host-only runtime structures.
+ * It is only available on non-AVR targets where SRAM is not constrained. */
+#ifndef __AVR__
+
 typedef struct osfx_glue_ctx {
     uint32_t local_aid;
     osfx_fusion_state tx_state;
@@ -83,6 +87,8 @@ int osfx_glue_plugin_cmd(
     char* out,
     size_t out_cap
 );
+
+#endif /* __AVR__ */
 
 #ifdef __cplusplus
 }
