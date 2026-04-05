@@ -148,13 +148,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install RISC-V toolchain
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf picolibc-riscv64-unknown-elf
       - name: Build libosfx_riscv.a
         run: |
           mkdir -p build-riscv/obj
+          PICOLIBC_INC=$(riscv64-unknown-elf-gcc -specs=picolibc.specs -march=rv32imc -mabi=ilp32 -print-sysroot 2>/dev/null)/usr/include
           for c in src/*.c; do
             riscv64-unknown-elf-gcc -march=rv32imc -mabi=ilp32 \
-              -std=c99 -Os -ffreestanding -Iinclude \
+              -std=c99 -Os -ffreestanding -isystem "$PICOLIBC_INC" -Iinclude \
               -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 \
               -c "$c" -o "build-riscv/obj/$(basename "${c%.c}").o"
           done
