@@ -1,8 +1,10 @@
-# 13 Performance Summary
+﻿# 13 Performance Summary
+
+> Maintainer release-QA reference. Arduino integrators can treat this as optional background.
 
 ## Benchmark Baseline
 
-Source report: `osfx-c99/build/bench/bench_report.md`
+Source report: `build/bench/bench_report.md`
 
 Latest baseline (with `MemoryLimitKB=16`):
 
@@ -28,6 +30,7 @@ Latest baseline (with `MemoryLimitKB=16`):
 ## Re-run Command
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\osfx-c99\scripts\bench.ps1 -Compiler auto -MemoryLimitKB 16
+powershell -ExecutionPolicy Bypass -File .\\scripts\bench.ps1 -Compiler auto -MemoryLimitKB 16
 ```
+
 

@@ -76,6 +76,7 @@ int osfx_template_encode(
         }
         off += (size_t)n;
 
+#if OSFX_CFG_PAYLOAD_GEOHASH_ID
         if (sensors[i].geohash_id[0] != '\0') {
             n = snprintf(out + off, out_cap - off, "#%s", sensors[i].geohash_id);
             if (n < 0 || (size_t)n >= out_cap - off) {
@@ -83,6 +84,8 @@ int osfx_template_encode(
             }
             off += (size_t)n;
         }
+#endif
+#if OSFX_CFG_PAYLOAD_SUPPLEMENTARY_MESSAGE
         if (sensors[i].supplementary_message[0] != '\0') {
             n = snprintf(out + off, out_cap - off, "!%s", sensors[i].supplementary_message);
             if (n < 0 || (size_t)n >= out_cap - off) {
@@ -90,6 +93,8 @@ int osfx_template_encode(
             }
             off += (size_t)n;
         }
+#endif
+#if OSFX_CFG_PAYLOAD_RESOURCE_URL
         if (sensors[i].resource_url[0] != '\0') {
             n = snprintf(out + off, out_cap - off, "@%s", sensors[i].resource_url);
             if (n < 0 || (size_t)n >= out_cap - off) {
@@ -97,6 +102,7 @@ int osfx_template_encode(
             }
             off += (size_t)n;
         }
+#endif
 
         n = snprintf(out + off, out_cap - off, "|");
         if (n < 0 || (size_t)n >= out_cap - off) {
@@ -196,17 +202,23 @@ int osfx_template_decode(const char* text, osfx_template_msg* out_msg) {
                 val_end = end;
             }
             if (mark == '#') {
+#if OSFX_CFG_PAYLOAD_GEOHASH_ID
                 if (!copy_token(out_msg->sensors[count].geohash_id, sizeof(out_msg->sensors[count].geohash_id), val_start, (size_t)(val_end - val_start))) {
                     return 0;
                 }
+#endif
             } else if (mark == '!') {
+#if OSFX_CFG_PAYLOAD_SUPPLEMENTARY_MESSAGE
                 if (!copy_token(out_msg->sensors[count].supplementary_message, sizeof(out_msg->sensors[count].supplementary_message), val_start, (size_t)(val_end - val_start))) {
                     return 0;
                 }
+#endif
             } else if (mark == '@') {
+#if OSFX_CFG_PAYLOAD_RESOURCE_URL
                 if (!copy_token(out_msg->sensors[count].resource_url, sizeof(out_msg->sensors[count].resource_url), val_start, (size_t)(val_end - val_start))) {
                     return 0;
                 }
+#endif
             }
             cursor = val_end;
         }

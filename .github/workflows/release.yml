@@ -1,13 +1,12 @@
-name: release
+name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
-      tag:
-        description: "Release tag (for example: v0.2.0)"
+      release_tag:
+        description: "Release tag (e.g. v1.0.0)"
         required: true
         type: string
 
@@ -15,213 +14,520 @@ permissions:
   contents: write
 
 env:
-  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  linux-package:
+  # ─── Platform: ARM Cortex-M0+ ────────────────────────────────────────────
+  arm-cm0-package:
+    name: Build (arm-cm0)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build linux .a
+      - name: Install ARM toolchain
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
+      - name: Build libosfx_arm_cm0.a
         run: |
-          cmake -S . -B build-linux -DOSFX_ENABLE_LTO=OFF -DOSFX_ENABLE_FILE_IO=OFF -DOSFX_ENABLE_CLI=OFF
-          cmake --build build-linux --config Release
-          cp build-linux/lib/libosfx_core.a osfx-${{ env.RELEASE_TAG }}-linux.a
-      - name: Upload linux artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: pkg-linux
-          path: osfx-${{ env.RELEASE_TAG }}-linux.a
-
-  avr-package:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install AVR toolchain
-        run: sudo apt-get update && sudo apt-get install -y gcc-avr binutils-avr avr-libc
-      - name: Build avr .a
-        run: |
-          mkdir -p build-avr/obj
+          mkdir -p build-arm-cm0/obj
           for c in src/*.c; do
-            avr-gcc -mmcu=atmega328p -std=c99 -Os -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-avr/obj/$(basename "${c%.c}").o"
+            arm-none-eabi-gcc -mcpu=cortex-m0plus -mthumb \
+              -std=c99 -Os -ffreestanding -Iinclude \
+              -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 \
+              -c "$c" -o "build-arm-cm0/obj/$(basename "${c%.c}").o"
           done
-          avr-ar rcs osfx-${{ env.RELEASE_TAG }}-avr.a build-avr/obj/*.o
-      - name: Upload avr artifact
+          arm-none-eabi-ar rcs libosfx_arm_cm0.a build-arm-cm0/obj/*.o
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pkg-avr
-          path: osfx-${{ env.RELEASE_TAG }}-avr.a
+          name: pkg-arm-cm0
+          path: libosfx_arm_cm0.a
 
-  esp32-package:
+  # ─── Platform: ARM Cortex-M3 ──────────────────────────────────────────────
+  arm-cm3-package:
+    name: Build (arm-cm3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ARM toolchain
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
+      - name: Build libosfx_arm_cm3.a
+        run: |
+          mkdir -p build-arm-cm3/obj
+          for c in src/*.c; do
+            arm-none-eabi-gcc -mcpu=cortex-m3 -mthumb \
+              -std=c99 -Os -ffreestanding -Iinclude \
+              -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 \
+              -c "$c" -o "build-arm-cm3/obj/$(basename "${c%.c}").o"
+          done
+          arm-none-eabi-ar rcs libosfx_arm_cm3.a build-arm-cm3/obj/*.o
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkg-arm-cm3
+          path: libosfx_arm_cm3.a
+
+  # ─── Platform: ARM Cortex-M4 ──────────────────────────────────────────────
+  arm-cm4-package:
+    name: Build (arm-cm4)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ARM toolchain
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
+      - name: Build libosfx_arm_cm4.a
+        run: |
+          mkdir -p build-arm-cm4/obj
+          for c in src/*.c; do
+            arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard \
+              -std=c99 -Os -ffreestanding -Iinclude \
+              -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 \
+              -c "$c" -o "build-arm-cm4/obj/$(basename "${c%.c}").o"
+          done
+          arm-none-eabi-ar rcs libosfx_arm_cm4.a build-arm-cm4/obj/*.o
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkg-arm-cm4
+          path: libosfx_arm_cm4.a
+
+  # ─── Platform: ARM Cortex-M7 ──────────────────────────────────────────────
+  arm-cm7-package:
+    name: Build (arm-cm7)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ARM toolchain
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
+      - name: Build libosfx_arm_cm7.a
+        run: |
+          mkdir -p build-arm-cm7/obj
+          for c in src/*.c; do
+            arm-none-eabi-gcc -mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard \
+              -std=c99 -Os -ffreestanding -Iinclude \
+              -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 \
+              -c "$c" -o "build-arm-cm7/obj/$(basename "${c%.c}").o"
+          done
+          arm-none-eabi-ar rcs libosfx_arm_cm7.a build-arm-cm7/obj/*.o
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkg-arm-cm7
+          path: libosfx_arm_cm7.a
+
+  # ─── Platform: ARM Cortex-M33 ─────────────────────────────────────────────
+  arm-cm33-package:
+    name: Build (arm-cm33)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ARM toolchain
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
+      - name: Build libosfx_arm_cm33.a
+        run: |
+          mkdir -p build-arm-cm33/obj
+          for c in src/*.c; do
+            arm-none-eabi-gcc -mcpu=cortex-m33 -mthumb -mfpu=fpv5-sp-d16 -mfloat-abi=hard \
+              -std=c99 -Os -ffreestanding -Iinclude \
+              -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 \
+              -c "$c" -o "build-arm-cm33/obj/$(basename "${c%.c}").o"
+          done
+          arm-none-eabi-ar rcs libosfx_arm_cm33.a build-arm-cm33/obj/*.o
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkg-arm-cm33
+          path: libosfx_arm_cm33.a
+
+  # ─── Platform: RISC-V rv32imc ─────────────────────────────────────────────
+  riscv-package:
+    name: Build (riscv)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install RISC-V toolchain
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf picolibc-riscv64-unknown-elf
+      - name: Build libosfx_riscv.a
+        run: |
+          mkdir -p build-riscv/obj
+          # gcc's own built-ins (stddef.h, stdarg.h, stdbool.h ...)
+          GCC_INC=$(riscv64-unknown-elf-gcc -march=rv32imc -mabi=ilp32 -print-file-name=include)
+          # picolibc headers installed by picolibc-riscv64-unknown-elf
+          PICOLIBC_INC=$(find /usr/lib/picolibc/riscv64-unknown-elf -name 'stdint.h' 2>/dev/null | head -1 | xargs dirname)
+          for c in src/*.c; do
+            riscv64-unknown-elf-gcc -march=rv32imc -mabi=ilp32 \
+              -std=c99 -Os -ffreestanding -nostdinc \
+              -isystem "$GCC_INC" \
+              -isystem "$PICOLIBC_INC" \
+              -Iinclude \
+              -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 \
+              -c "$c" -o "build-riscv/obj/$(basename "${c%.c}").o"
+          done
+          riscv64-unknown-elf-ar rcs libosfx_riscv.a build-riscv/obj/*.o
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkg-riscv
+          path: libosfx_riscv.a
+
+  # ─── Platform: Xtensa / ESP32 ─────────────────────────────────────────────
+  xtensa-package:
+    name: Build (xtensa/esp32)
     runs-on: ubuntu-latest
     container:
       image: espressif/idf:release-v5.2
     steps:
       - uses: actions/checkout@v4
-      - name: Build esp32 .a
+      - name: Build libosfx_xtensa.a
         shell: bash
         run: |
           source /opt/esp/idf/export.sh
-          command -v xtensa-esp32-elf-gcc
-          mkdir -p build-esp32/obj
+          mkdir -p build-xtensa/obj
           for c in src/*.c; do
-            xtensa-esp32-elf-gcc -std=c99 -Os -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-esp32/obj/$(basename "${c%.c}").o"
+            xtensa-esp32-elf-gcc -std=c99 -Os -Iinclude \
+              -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 \
+              -c "$c" -o "build-xtensa/obj/$(basename "${c%.c}").o"
           done
-          xtensa-esp32-elf-ar rcs osfx-${{ env.RELEASE_TAG }}-esp32.a build-esp32/obj/*.o
-      - name: Upload esp32 artifact
+          xtensa-esp32-elf-ar rcs libosfx_xtensa.a build-xtensa/obj/*.o
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pkg-esp32
-          path: osfx-${{ env.RELEASE_TAG }}-esp32.a
+          name: pkg-xtensa
+          path: libosfx_xtensa.a
 
-  cortexm-package:
+  # ─── Platform: AVR small (ATmega328P, ≤64 KB Flash) ───────────────────────
+  avr-small-package:
+    name: Build (avr-small / atmega328p)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install ARM embedded toolchain
-        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi
-      - name: Build cortexm .a
+      - name: Install AVR toolchain
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends gcc-avr binutils-avr avr-libc
+      - name: Build libosfx_avr_small.a
         run: |
-          mkdir -p build-cortexm/obj
+          mkdir -p build-avr-small/obj
+          AVR_EXCLUDE="osfx_glue.c|osfx_platform_runtime.c|osfx_service_runtime.c\
+            |osfx_cli_lite.c|osfx_storage.c|osfx_storage_littlefs.c\
+            |osfx_library_catalog.c|osfx_secure_session.c\
+            |osfx_payload_crypto.c|osfx_plugin_port_forwarder.c"
           for c in src/*.c; do
-            arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -std=c99 -Os -ffreestanding -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-cortexm/obj/$(basename "${c%.c}").o"
+            fname="$(basename "$c")"
+            echo "$AVR_EXCLUDE" | tr '|' '\n' | grep -qx "$fname" && continue
+            avr-gcc -mmcu=atmega328p -std=c99 -Os -Iinclude \
+              -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 \
+              -c "$c" -o "build-avr-small/obj/$(basename "${c%.c}").o"
           done
-          arm-none-eabi-ar rcs osfx-${{ env.RELEASE_TAG }}-cortexm.a build-cortexm/obj/*.o
-      - name: Upload cortexm artifact
+          avr-ar rcs libosfx_avr_small.a build-avr-small/obj/*.o
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pkg-cortexm
-          path: osfx-${{ env.RELEASE_TAG }}-cortexm.a
+          name: pkg-avr-small
+          path: libosfx_avr_small.a
 
-  riscv-package:
+  # ─── Platform: AVR large (ATmega2560, ≥128 KB Flash) ──────────────────────
+  avr-large-package:
+    name: Build (avr-large / atmega2560)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install RISC-V toolchain
-        run: sudo apt-get update && sudo apt-get install -y gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf picolibc-riscv64-unknown-elf
-      - name: Build riscv .a
+      - name: Install AVR toolchain
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends gcc-avr binutils-avr avr-libc
+      - name: Build libosfx_avr_large.a
         run: |
-          mkdir -p build-riscv/obj
+          mkdir -p build-avr-large/obj
+          AVR_EXCLUDE="osfx_glue.c|osfx_platform_runtime.c|osfx_service_runtime.c\
+            |osfx_cli_lite.c|osfx_storage.c|osfx_storage_littlefs.c\
+            |osfx_library_catalog.c|osfx_secure_session.c\
+            |osfx_payload_crypto.c|osfx_plugin_port_forwarder.c"
           for c in src/*.c; do
-            riscv64-unknown-elf-gcc -march=rv32imac -mabi=ilp32 -specs=picolibc.specs -std=c99 -Os -ffreestanding -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-riscv/obj/$(basename "${c%.c}").o"
+            fname="$(basename "$c")"
+            echo "$AVR_EXCLUDE" | tr '|' '\n' | grep -qx "$fname" && continue
+            avr-gcc -mmcu=atmega2560 -std=c99 -Os -Iinclude \
+              -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 \
+              -c "$c" -o "build-avr-large/obj/$(basename "${c%.c}").o"
           done
-          riscv64-unknown-elf-ar rcs osfx-${{ env.RELEASE_TAG }}-riscv32.a build-riscv/obj/*.o
-      - name: Upload riscv artifact
+          avr-ar rcs libosfx_avr_large.a build-avr-large/obj/*.o
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pkg-riscv
-          path: osfx-${{ env.RELEASE_TAG }}-riscv32.a
+          name: pkg-avr-large
+          path: libosfx_avr_large.a
 
-  rp2040-package:
+  # ─── Platform: Linux x86_64 ───────────────────────────────────────────────
+  linux-x86_64-package:
+    name: Build (linux-x86_64)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install ARM embedded toolchain
-        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi
-      - name: Build rp2040 .a
+      - name: Build libosfx_x86_64_linux.a
         run: |
-          mkdir -p build-rp2040/obj
+          mkdir -p build-linux/obj
           for c in src/*.c; do
-            arm-none-eabi-gcc -mcpu=cortex-m0plus -mthumb -std=c99 -Os -ffreestanding -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-rp2040/obj/$(basename "${c%.c}").o"
+            gcc -m64 -std=c99 -O2 -Iinclude \
+              -c "$c" -o "build-linux/obj/$(basename "${c%.c}").o"
           done
-          arm-none-eabi-ar rcs osfx-${{ env.RELEASE_TAG }}-rp2040.a build-rp2040/obj/*.o
-      - name: Upload rp2040 artifact
+          ar rcs libosfx_x86_64_linux.a build-linux/obj/*.o
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pkg-rp2040
-          path: osfx-${{ env.RELEASE_TAG }}-rp2040.a
+          name: pkg-linux-x86_64
+          path: libosfx_x86_64_linux.a
 
-  android-package:
+  # ─── Platform: Windows x86_64 (MinGW cross-compile) ──────────────────────
+  windows-x86_64-package:
+    name: Build (windows-x86_64)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - id: ndk
-        uses: nttld/setup-ndk@v1
-        with:
-          ndk-version: r26d
-      - name: Build android .a
-        env:
-          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+      - name: Install MinGW-w64
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64
+      - name: Build libosfx_x86_64_windows.lib
         run: |
-          mkdir -p build-android/obj
-          CC="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang"
-          AR="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"
+          mkdir -p build-windows/obj
           for c in src/*.c; do
-            "$CC" -std=c99 -Os -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-android/obj/$(basename "${c%.c}").o"
+            x86_64-w64-mingw32-gcc -m64 -std=c99 -O2 -Iinclude \
+              -c "$c" -o "build-windows/obj/$(basename "${c%.c}").o"
           done
-          "$AR" rcs osfx-${{ env.RELEASE_TAG }}-android.a build-android/obj/*.o
-      - name: Upload android artifact
+          x86_64-w64-mingw32-ar rcs libosfx_x86_64_windows.lib build-windows/obj/*.o
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pkg-android
-          path: osfx-${{ env.RELEASE_TAG }}-android.a
+          name: pkg-windows-x86_64
+          path: libosfx_x86_64_windows.lib
 
-  ios-package:
+  # ─── Platform: macOS x86_64 ───────────────────────────────────────────────
+  macos-x86_64-package:
+    name: Build (macos-x86_64)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build ios .a
+      - name: Build libosfx_x86_64_macos.a
         run: |
-          mkdir -p build-ios/obj
+          mkdir -p build-macos/obj
           for c in src/*.c; do
-            xcrun --sdk iphoneos clang -arch arm64 -std=c99 -Os -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-ios/obj/$(basename "${c%.c}").o"
+            clang -arch x86_64 -std=c99 -O2 -Iinclude \
+              -c "$c" -o "build-macos/obj/$(basename "${c%.c}").o"
           done
-          libtool -static -o osfx-${{ env.RELEASE_TAG }}-ios.a build-ios/obj/*.o
-      - name: Upload ios artifact
+          libtool -static -o libosfx_x86_64_macos.a build-macos/obj/*.o
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pkg-ios
-          path: osfx-${{ env.RELEASE_TAG }}-ios.a
+          name: pkg-macos-x86_64
+          path: libosfx_x86_64_macos.a
 
-  wasm-package:
+  # ─── Platform: macOS ARM64 (Apple Silicon) ────────────────────────────────
+  macos-arm64-package:
+    name: Build (macos-arm64)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build macos-arm64 library
+        run: |
+          mkdir -p build-macos-arm64/obj
+          for c in src/*.c; do
+            clang -arch arm64 -std=c99 -O2 -Iinclude \
+              -c "$c" -o "build-macos-arm64/obj/$(basename "${c%.c}").o"
+          done
+          libtool -static -o libosfx_macos_arm64.a build-macos-arm64/obj/*.o
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkg-macos-arm64
+          path: libosfx_macos_arm64.a
+
+  # ─── Platform: iOS arm64 (Xcode / xcrun) ────────────────────────────────
+  ios-arm64-package:
+    name: Build (ios-arm64)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build iOS arm64 library
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          mkdir -p build-ios-arm64/obj
+          for c in src/*.c; do
+            xcrun --sdk iphoneos clang \
+              -target arm64-apple-ios14.0 \
+              -isysroot "$SDK" \
+              -std=c99 -O2 -Iinclude \
+              -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 \
+              -c "$c" -o "build-ios-arm64/obj/$(basename "${c%.c}").o"
+          done
+          libtool -static -o libosfx_ios_arm64.a build-ios-arm64/obj/*.o
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkg-ios-arm64
+          path: libosfx_ios_arm64.a
+
+  # ─── Platform: Android arm64-v8a (NDK) ──────────────────────────────────
+  android-arm64-package:
+    name: Build (android-arm64)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Emscripten
-        run: sudo apt-get update && sudo apt-get install -y emscripten
-      - name: Build wasm .a
+      - name: Set up Android NDK
+        uses: android-actions/setup-android@v3
+      - name: Build Android arm64-v8a library
         run: |
-          mkdir -p build-wasm/obj
+          # Locate the NDK clang for arm64-v8a (API 21 = minimum for 64-bit Android)
+          NDK_ROOT="${ANDROID_NDK_HOME:-${ANDROID_NDK:-${ANDROID_SDK_ROOT}/ndk-bundle}}"
+          TOOLCHAIN="${NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64"
+          CC="${TOOLCHAIN}/bin/aarch64-linux-android21-clang"
+          AR="${TOOLCHAIN}/bin/llvm-ar"
+          mkdir -p build-android-arm64/obj
           for c in src/*.c; do
-            emcc -std=c99 -Os -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-wasm/obj/$(basename "${c%.c}").o"
+            "$CC" -std=c99 -O2 -Iinclude \
+              -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 \
+              -c "$c" -o "build-android-arm64/obj/$(basename "${c%.c}").o"
           done
-          emar rcs osfx-${{ env.RELEASE_TAG }}-wasm.a build-wasm/obj/*.o
-      - name: Upload wasm artifact
+          "$AR" rcs libosfx_android_arm64.a build-android-arm64/obj/*.o
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pkg-wasm
-          path: osfx-${{ env.RELEASE_TAG }}-wasm.a
+          name: pkg-android-arm64
+          path: libosfx_android_arm64.a
 
-  stm32-package:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install ARM embedded toolchain
-        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi
-      - name: Build stm32 .a
-        run: |
-          mkdir -p build-stm32/obj
-          for c in src/*.c; do
-            arm-none-eabi-gcc -mcpu=cortex-m3 -mthumb -std=c99 -Os -ffreestanding -Iinclude -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 -c "$c" -o "build-stm32/obj/$(basename "${c%.c}").o"
-          done
-          arm-none-eabi-ar rcs osfx-${{ env.RELEASE_TAG }}-stm32.a build-stm32/obj/*.o
-      - name: Upload stm32 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: pkg-stm32
-          path: osfx-${{ env.RELEASE_TAG }}-stm32.a
-
+  # ─── Publish GitHub Release ───────────────────────────────────────────────
   publish:
-    needs: [linux-package, avr-package, esp32-package, cortexm-package, stm32-package, riscv-package, rp2040-package, android-package, ios-package, wasm-package]
+    name: Publish GitHub Release
+    needs:
+      - arm-cm0-package
+      - arm-cm3-package
+      - arm-cm4-package
+      - arm-cm7-package
+      - arm-cm33-package
+      - riscv-package
+      - xtensa-package
+      - avr-small-package
+      - avr-large-package
+      - linux-x86_64-package
+      - windows-x86_64-package
+      - macos-x86_64-package
+      - macos-arm64-package
+      - android-arm64-package
+      - ios-arm64-package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
+
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v4
         with:
           path: dist
-      - name: Publish GitHub release assets
+
+      # ── Assemble Arduino-compliant library ZIP ──────────────────────────────
+      # Arduino Library Manager spec:
+      #   • ZIP name    : {name}-{version}.zip  (name = library.properties name)
+      #   • Root folder : {name}  (must match exactly)
+      #   • Precompiled : src/{build.mcu}/libOSynapticFX.a
+      - name: Assemble Arduino library ZIP
+        shell: bash
+        run: |
+          VER="${{ env.RELEASE_TAG }}"
+          VER="${VER#v}"
+
+          # Read canonical library name from library.properties (Arduino spec: ZIP name == library name)
+          LIB=$(grep -m1 '^name=' library.properties | cut -d= -f2- | tr -d '[:space:]')
+          ZIP="${LIB}-${VER}.zip"
+          PKG="${LIB}"
+
+          # --- metadata (patch version in library.properties to match release tag) ---
+          mkdir -p "${PKG}"
+          sed "s/^version=.*/version=${VER}/" library.properties > "${PKG}/library.properties"
+          cp README.md LICENSE keywords.txt "${PKG}/"
+
+          # --- headers (include/) + examples ---
+          cp -r include examples "${PKG}/"
+
+          # --- C source files (flat src/*.{c,h} only, no subdirs) ---
+          mkdir -p "${PKG}/src"
+          find src -maxdepth 1 \( -name "*.c" -o -name "*.h" \) -exec cp {} "${PKG}/src/" \;
+
+          # --- precompiled: src/{build.mcu}/libOSynapticFX.a ---
+          install_lib() {
+            local artifact="$1" arch="$2"
+            local f
+            f=$(find "dist/${artifact}" -name "*.a" 2>/dev/null | head -1)
+            if [ -n "$f" ]; then
+              mkdir -p "${PKG}/src/${arch}"
+              cp "$f" "${PKG}/src/${arch}/libOSynapticFX.a"
+              echo "  [arduino] src/${arch}/libOSynapticFX.a  ($(wc -c < "$f") bytes)"
+            else
+              echo "  [skip]   dist/${artifact} — no .a found"
+            fi
+          }
+
+          install_lib pkg-arm-cm0    cortex-m0plus
+          install_lib pkg-arm-cm3    cortex-m3
+          install_lib pkg-arm-cm4    cortex-m4
+          install_lib pkg-arm-cm7    cortex-m7
+          install_lib pkg-arm-cm33   cortex-m33
+          install_lib pkg-riscv      riscv32
+          install_lib pkg-xtensa     esp32
+          install_lib pkg-avr-small  atmega328p
+          install_lib pkg-avr-large  atmega2560
+
+          # --- create ZIP ---
+          zip -r "${ZIP}" "${PKG}"
+          echo "ZIP_NAME=${ZIP}" >> "$GITHUB_ENV"
+          echo ""
+          echo "=== Arduino ZIP: ${ZIP}  ($(wc -c < "${ZIP}") bytes) ==="
+          unzip -l "${ZIP}" | grep "libOSynapticFX"
+
+      # ── Rename all platform binaries with versioned names ────────────────────
+      # Format: osfx-{version}-{platform}.a  (or .lib for Windows)
+      - name: Rename platform binaries
+        shell: bash
+        run: |
+          VER="${{ env.RELEASE_TAG }}"
+          VER="${VER#v}"
+          rename_lib() {
+            local artifact="$1" dest="$2"
+            local f
+            f=$(find "dist/${artifact}" -type f \( -name "*.a" -o -name "*.lib" \) 2>/dev/null | head -1)
+            if [ -n "$f" ]; then
+              cp "$f" "$dest"
+              echo "  [release] $dest"
+            else
+              echo "  [skip]    dist/${artifact} — no binary found"
+            fi
+          }
+          # Embedded targets (also inside Arduino ZIP; published separately here)
+          rename_lib pkg-arm-cm0        "osfx-${VER}-arm-cm0.a"
+          rename_lib pkg-arm-cm3        "osfx-${VER}-arm-cm3.a"
+          rename_lib pkg-arm-cm4        "osfx-${VER}-arm-cm4.a"
+          rename_lib pkg-arm-cm7        "osfx-${VER}-arm-cm7.a"
+          rename_lib pkg-arm-cm33       "osfx-${VER}-arm-cm33.a"
+          rename_lib pkg-riscv          "osfx-${VER}-riscv32.a"
+          rename_lib pkg-xtensa         "osfx-${VER}-xtensa-esp32.a"
+          # AVR: atmega328p (≤32 KB Flash, rjmp/rcall) vs atmega2560 (256 KB Flash, jmp/call)
+          rename_lib pkg-avr-small      "osfx-${VER}-avr-atmega328p.a"
+          rename_lib pkg-avr-large      "osfx-${VER}-avr-atmega2560.a"
+          # Host/desktop targets
+          rename_lib pkg-linux-x86_64   "osfx-${VER}-linux-x86_64.a"
+          rename_lib pkg-windows-x86_64 "osfx-${VER}-windows-x86_64.lib"
+          rename_lib pkg-macos-x86_64   "osfx-${VER}-macos-x86_64.a"
+          rename_lib pkg-macos-arm64    "osfx-${VER}-macos-arm64.a"
+          rename_lib pkg-android-arm64  "osfx-${VER}-android-arm64.a"
+          rename_lib pkg-ios-arm64      "osfx-${VER}-ios-arm64.a"
+
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
-          name: OSynapptic-FX ${{ env.RELEASE_TAG }}
-          files: dist/**/*.a
+          name: "OSynaptic-FX ${{ env.RELEASE_TAG }}"
+          body_path: RELEASE_NOTES_v1.0.0.md
+          files: |
+            ${{ env.ZIP_NAME }}
+            osfx-*.a
+            osfx-*.lib
+          draft: false
+          prerelease: ${{ contains(env.RELEASE_TAG, '-rc') || contains(env.RELEASE_TAG, '-beta') || contains(env.RELEASE_TAG, '-alpha') }}
           overwrite_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true

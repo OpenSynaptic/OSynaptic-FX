@@ -1,4 +1,6 @@
-# 07 Quality Gate And Compiler Matrix
+﻿# 07 Quality Gate And Compiler Matrix
+
+> Maintainer QA document. Arduino end users should prioritize `examples/` compile and upload workflows.
 
 ## 质量门目标
 
@@ -13,15 +15,15 @@
 
 ```powershell
 # 单编译器（自动选择）
-powershell -ExecutionPolicy Bypass -File .\osfx-c99\scripts\test.ps1 -Compiler auto
+powershell -ExecutionPolicy Bypass -File .\\scripts\test.ps1 -Compiler auto
 
 # 编译器矩阵
-powershell -ExecutionPolicy Bypass -File .\osfx-c99\scripts\test.ps1 -Matrix
+powershell -ExecutionPolicy Bypass -File .\\scripts\test.ps1 -Matrix
 ```
 
 ## 报告产物
 
-- `osfx-c99/build/quality_gate_report.md`
+- `build/quality_gate_report.md`
 
 报告字段：
 
@@ -34,7 +36,7 @@ powershell -ExecutionPolicy Bypass -File .\osfx-c99\scripts\test.ps1 -Matrix
 ## 报告查看示例
 
 ```powershell
-Get-Content .\osfx-c99\build\quality_gate_report.md
+Get-Content .\\build\quality_gate_report.md
 ```
 
 示例判断：
@@ -56,10 +58,10 @@ Get-Content .\osfx-c99\build\quality_gate_report.md
 
 ```powershell
 # 仅复跑 clang
-powershell -ExecutionPolicy Bypass -File .\osfx-c99\scripts\test.ps1 -Compiler clang
+powershell -ExecutionPolicy Bypass -File .\\scripts\test.ps1 -Compiler clang
 
 # 仅复跑 cl
-powershell -ExecutionPolicy Bypass -File .\osfx-c99\scripts\test.ps1 -Compiler cl
+powershell -ExecutionPolicy Bypass -File .\\scripts\test.ps1 -Compiler cl
 ```
 
 常见场景：
@@ -67,4 +69,5 @@ powershell -ExecutionPolicy Bypass -File .\osfx-c99\scripts\test.ps1 -Compiler c
 - `native` 失败：优先检查新增 C 文件是否进入库构建。
 - `integration` 失败：优先检查协议行为回归（packet/meta）。
 - `CLI Smoke` 失败：优先检查 `tools/osfx_cli_main.c` 与 `osfx_cli_lite` 路由命令。
+
 

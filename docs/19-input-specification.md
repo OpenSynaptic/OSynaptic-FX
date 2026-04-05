@@ -1,6 +1,6 @@
-# 19 Input Specification
+﻿# 19 Input Specification
 
-This document defines the input specifications for `osfx-c99` at different calling levels, focusing on answering: who provides transmission rules and which fields are required.
+This document defines the input specifications for `OSynaptic-FX` at different calling levels, focusing on answering: who provides transmission rules and which fields are required.
 
 ## 1. Terminology and Layering
 
@@ -14,7 +14,7 @@ Standard transmission API calibration (reference `SEND_API_INDEX.md` / `SEND_API
 
 - `transmit(sensors=[ [sensor_id, status, value, unit], ... ])`
 
-On the `osfx-c99` side, this is equivalent to `osfx_glue_encode_sensor_auto(...)` (single sensor) or multi-sensor wrapper.
+On the `OSynaptic-FX` side, this is equivalent to `osfx_glue_encode_sensor_auto(...)` (single sensor) or multi-sensor wrapper.
 
 ### 2.1 Required Fields (User/Business Side Provides)
 
@@ -116,10 +116,10 @@ Not recommended for normal business code to use directly.
 
 ## 8.1 Basic Config and Compile-Time Effective
 
-`osfx-c99` supports driving compile-time switches using basic configuration files:
+`OSynaptic-FX` supports driving compile-time switches using basic configuration files:
 
-- Configuration source: `osfx-c99/Config.json`
-- Generated header: `osfx-c99/include/osfx_build_config.h`
+- Configuration source: `OSynaptic-FX/Config.json`
+- Generated header: `OSynaptic-FX/include/osfx_build_config.h`
 - Build configuration header: `include/osfx_build_config.h` (committed in repository)
 
 Currently effective compile-time switches (examples):
@@ -281,4 +281,5 @@ Field interpretation (per current `payload_switches`):
 - `ResourceUrl=false` => `@url` does not appear
 
 To see geohash/url in body, set corresponding switches to `true` and recompile.
+
 

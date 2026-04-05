@@ -1,4 +1,4 @@
-# 04 Plugin Scope And Commands
+﻿# 04 Plugin Scope And Commands
 
 ## 范围策略
 
@@ -69,23 +69,23 @@
 
 ```powershell
 # 1) View current included plugins
-.\osfx-c99\build\osfx_cli_cl.exe plugin-list
+.\\build\osfx_cli_cl.exe plugin-list
 
 # 2) Load scoped plugins
-.\osfx-c99\build\osfx_cli_cl.exe plugin-load transport
-.\osfx-c99\build\osfx_cli_cl.exe plugin-load test_plugin
-.\osfx-c99\build\osfx_cli_cl.exe plugin-load port_forwarder
+.\\build\osfx_cli_cl.exe plugin-load transport
+.\\build\osfx_cli_cl.exe plugin-load test_plugin
+.\\build\osfx_cli_cl.exe plugin-load port_forwarder
 
 # 3) Access transport via plugin-cmd
-.\osfx-c99\build\osfx_cli_cl.exe plugin-cmd transport status
-.\osfx-c99\build\osfx_cli_cl.exe plugin-cmd transport dispatch auto A1B2
+.\\build\osfx_cli_cl.exe plugin-cmd transport status
+.\\build\osfx_cli_cl.exe plugin-cmd transport dispatch auto A1B2
 
 # 4) Access test_plugin via plugin-cmd
-.\osfx-c99\build\osfx_cli_cl.exe plugin-cmd test_plugin run component
+.\\build\osfx_cli_cl.exe plugin-cmd test_plugin run component
 
 # 5) Access port_forwarder via plugin-cmd
-.\osfx-c99\build\osfx_cli_cl.exe plugin-cmd port_forwarder add-rule r1 udp 8080 tcp 9000
-.\osfx-c99\build\osfx_cli_cl.exe plugin-cmd port_forwarder forward udp 8080 A1B2C3
+.\\build\osfx_cli_cl.exe plugin-cmd port_forwarder add-rule r1 udp 8080 tcp 9000
+.\\build\osfx_cli_cl.exe plugin-cmd port_forwarder forward udp 8080 A1B2C3
 ```
 
 ## Expected Output Examples
@@ -94,4 +94,5 @@
 - Successful load typically returns `ok=1 loaded=<name>`.
 - Command failure typically returns `error=...` (e.g., insufficient parameters or unknown command).
 - If calling excluded plugins (e.g., `web`), should return `error=load_failed name=web` or equivalent failure output.
+
 

@@ -4,11 +4,32 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "osfx_build_config.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/*
+ * ID lease table capacity.
+ *
+ * Override priority:
+ *   1) User-defined OSFX_ID_MAX_ENTRIES (for example in osfx_user_config.h)
+ *   2) Platform default below
+ */
+#ifndef OSFX_ID_MAX_ENTRIES
+#if defined(CH32V003) || defined(CH32V003xx)
+#define OSFX_ID_MAX_ENTRIES 16
+#elif defined(STM32F103xB) || defined(STM32F103xE) || defined(STM32F1) || defined(STM32F1xx)
+#define OSFX_ID_MAX_ENTRIES 64
+#elif defined(ARDUINO_ARCH_RP2040) || defined(ARDUINO_ARCH_MBED_RP2040) || defined(PICO_RP2040) || defined(STM32F4) || defined(STM32F4xx)
+#define OSFX_ID_MAX_ENTRIES 256
+#elif defined(ESP32) || defined(ARDUINO_ARCH_ESP32) || defined(__linux__) || defined(__ANDROID__)
 #define OSFX_ID_MAX_ENTRIES 1024
+#else
+#define OSFX_ID_MAX_ENTRIES 256
+#endif
+#endif
 
 typedef struct osfx_id_lease_entry {
     uint32_t aid;

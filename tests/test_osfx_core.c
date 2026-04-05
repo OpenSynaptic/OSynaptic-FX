@@ -145,8 +145,9 @@ static int test_fusion_state_transitions(void) {
     uint8_t pkt[256];
     int pkt_len = 0;
     uint8_t cmd = 0;
-    const uint8_t full1[] = "TEMP|Pa|abc";
-    const uint8_t full2[] = "TEMP|Pa|abd";
+    const uint8_t full1[] = "N1.ONLINE.1710000000|TEMP>OK.Pa:abc|";
+    const uint8_t full2[] = "N1.ONLINE.1710000001|TEMP>OK.Pa:abd|";
+    const uint8_t full3[] = "N1.ONLINE.1710000002|TEMP>OK.Pa:abd|";
 
     osfx_fusion_state_init(&st);
     if (!osfx_fusion_encode(&st, 7U, 1U, 1ULL, full1, sizeof(full1) - 1U, pkt, sizeof(pkt), &pkt_len, &cmd)) {
@@ -165,7 +166,7 @@ static int test_fusion_state_transitions(void) {
         printf("[FAIL] expected DIFF cmd, got=%u\n", (unsigned)cmd);
         return 0;
     }
-    if (!osfx_fusion_encode(&st, 7U, 1U, 3ULL, full2, sizeof(full2) - 1U, pkt, sizeof(pkt), &pkt_len, &cmd)) {
+    if (!osfx_fusion_encode(&st, 7U, 1U, 3ULL, full3, sizeof(full3) - 1U, pkt, sizeof(pkt), &pkt_len, &cmd)) {
         printf("[FAIL] fusion HEART encode failed\n");
         return 0;
     }
@@ -185,16 +186,24 @@ static int test_template_grammar(void) {
     strcpy(slots[0].sensor_state, "OK");
     strcpy(slots[0].sensor_unit, "Pa");
     strcpy(slots[0].sensor_value, "abc");
+#if OSFX_CFG_PAYLOAD_GEOHASH_ID
     strcpy(slots[0].geohash_id, "wx4g0ec1");
+#endif
     strcpy(slots[0].supplementary_message, "msg0");
+#if OSFX_CFG_PAYLOAD_RESOURCE_URL
     strcpy(slots[0].resource_url, "https://r/0");
+#endif
     strcpy(slots[1].sensor_id, "HUM");
     strcpy(slots[1].sensor_state, "OK");
     strcpy(slots[1].sensor_unit, "%");
     strcpy(slots[1].sensor_value, "def");
+#if OSFX_CFG_PAYLOAD_GEOHASH_ID
     strcpy(slots[1].geohash_id, "wx4g0ec2");
+#endif
     strcpy(slots[1].supplementary_message, "msg1");
+#if OSFX_CFG_PAYLOAD_RESOURCE_URL
     strcpy(slots[1].resource_url, "https://r/1");
+#endif
 
     if (!osfx_template_encode("N1", "ONLINE", "1710000000", slots, 2U, out, sizeof(out))) {
         printf("[FAIL] template encode failed\n");
@@ -208,10 +217,22 @@ static int test_template_grammar(void) {
         printf("[FAIL] template mismatch\n");
         return 0;
     }
-    if (strcmp(msg.sensors[0].geohash_id, "wx4g0ec1") != 0 || strcmp(msg.sensors[1].supplementary_message, "msg1") != 0 || strcmp(msg.sensors[0].resource_url, "https://r/0") != 0) {
-        printf("[FAIL] template extension mismatch\n");
+#if OSFX_CFG_PAYLOAD_GEOHASH_ID
+    if (strcmp(msg.sensors[0].geohash_id, "wx4g0ec1") != 0) {
+        printf("[FAIL] template geohash mismatch\n");
         return 0;
     }
+#endif
+    if (strcmp(msg.sensors[1].supplementary_message, "msg1") != 0) {
+        printf("[FAIL] template supplementary_message mismatch\n");
+        return 0;
+    }
+#if OSFX_CFG_PAYLOAD_RESOURCE_URL
+    if (strcmp(msg.sensors[0].resource_url, "https://r/0") != 0) {
+        printf("[FAIL] template resource_url mismatch\n");
+        return 0;
+    }
+#endif
     return 1;
 }
 
@@ -369,7 +390,7 @@ static int test_transporter_runtime(void) {
 static int test_secure_session_store(void) {
     osfx_secure_session_store st;
     osfx_secure_session_store st2;
-    const char* path = "E:/OSynapptic-FX/osfx-c99/build/secure_sessions_test.txt";
+    const char* path = "build/secure_sessions_test.txt";
     osfx_secure_store_init(&st, 3600U);
     if (!osfx_secure_note_plaintext_sent(&st, 42U, 1710000000ULL, 1710000001ULL)) {
         return 0;
@@ -437,10 +458,106 @@ static int test_secure_payload_pipeline(void) {
     return 1;
 }
 
+typedef struct test_mem_storage_ctx {
+    char data[16384];
+    size_t len;
+    size_t read_pos;
+    int readable;
+} test_mem_storage_ctx;
+
+static int test_mem_storage_write(void* handle, const char* text) {
+    test_mem_storage_ctx* ctx = (test_mem_storage_ctx*)handle;
+    size_t n;
+    if (!ctx || !text) {
+        return 0;
+    }
+    n = strlen(text);
+    if (ctx->len + n + 1U > sizeof(ctx->data)) {
+        return 0;
+    }
+    memcpy(ctx->data + ctx->len, text, n);
+    ctx->len += n;
+    ctx->data[ctx->len] = '\0';
+    return 1;
+}
+
+static int test_mem_storage_writer_close(void* handle) {
+    test_mem_storage_ctx* ctx = (test_mem_storage_ctx*)handle;
+    if (!ctx) {
+        return 0;
+    }
+    ctx->read_pos = 0U;
+    ctx->readable = 1;
+    return 1;
+}
+
+static int test_mem_storage_read_line(void* handle, char* out, size_t out_cap) {
+    test_mem_storage_ctx* ctx = (test_mem_storage_ctx*)handle;
+    size_t start;
+    size_t n;
+    if (!ctx || !out || out_cap == 0U || !ctx->readable) {
+        return -1;
+    }
+    if (ctx->read_pos >= ctx->len) {
+        return 0;
+    }
+    start = ctx->read_pos;
+    while (ctx->read_pos < ctx->len && ctx->data[ctx->read_pos] != '\n') {
+        ctx->read_pos++;
+    }
+    n = ctx->read_pos - start;
+    if (ctx->read_pos < ctx->len && ctx->data[ctx->read_pos] == '\n') {
+        ctx->read_pos++;
+    }
+    if (n + 1U > out_cap) {
+        return -1;
+    }
+    memcpy(out, ctx->data + start, n);
+    out[n] = '\0';
+    return 1;
+}
+
+static int test_mem_storage_reader_close(void* handle) {
+    test_mem_storage_ctx* ctx = (test_mem_storage_ctx*)handle;
+    if (!ctx) {
+        return 0;
+    }
+    return 1;
+}
+
+static int test_mem_storage_open_writer(void* user_ctx, const char* key, osfx_storage_writer* out_writer) {
+    test_mem_storage_ctx* ctx = (test_mem_storage_ctx*)user_ctx;
+    (void)key;
+    if (!ctx || !out_writer) {
+        return 0;
+    }
+    ctx->len = 0U;
+    ctx->read_pos = 0U;
+    ctx->readable = 0;
+    ctx->data[0] = '\0';
+    out_writer->handle = ctx;
+    out_writer->write = test_mem_storage_write;
+    out_writer->close = test_mem_storage_writer_close;
+    return 1;
+}
+
+static int test_mem_storage_open_reader(void* user_ctx, const char* key, osfx_storage_reader* out_reader) {
+    test_mem_storage_ctx* ctx = (test_mem_storage_ctx*)user_ctx;
+    (void)key;
+    if (!ctx || !out_reader || !ctx->readable) {
+        return 0;
+    }
+    ctx->read_pos = 0U;
+    out_reader->handle = ctx;
+    out_reader->read_line = test_mem_storage_read_line;
+    out_reader->close = test_mem_storage_reader_close;
+    return 1;
+}
+
 static int test_id_allocator_persistence(void) {
     osfx_id_allocator alloc;
     osfx_id_allocator alloc2;
-    const char* path = "E:/OSynapptic-FX/osfx-c99/build/id_alloc_test.txt";
+    const char* path = "build/id_alloc_test.txt";
     uint32_t a1 = 0;
     uint32_t a2 = 0;
 
@@ -515,6 +632,53 @@ static int test_id_allocator_persistence(void) {
     }
     remove(path);
     return 1;
+}
+
+static int test_id_allocator_storage_backend(void) {
+    osfx_id_allocator alloc;
+    osfx_id_allocator alloc2;
+    uint32_t aid = 0U;
+    int ok = 0;
+    const osfx_storage_backend* prev = osfx_storage_get_backend();
+    test_mem_storage_ctx storage;
+    osfx_storage_backend backend;
+
+    memset(&storage, 0, sizeof(storage));
+    backend.user_ctx = &storage;
+    backend.open_writer = test_mem_storage_open_writer;
+    backend.open_reader = test_mem_storage_open_reader;
+    osfx_storage_set_backend(&backend);
+
+    osfx_id_allocator_init(&alloc, 300U, 305U, 120U);
+    if (!osfx_id_allocate(&alloc, 2000U, &aid) || aid != 300U) {
+        goto done;
+    }
+    if (!osfx_id_touch(&alloc, aid, 2001U)) {
+        goto done;
+    }
+    if (!osfx_id_save(&alloc, "id_mem_test")) {
+        goto done;
+    }
+
+    osfx_id_allocator_init(&alloc2, 0U, 0U, 0U);
+    if (!osfx_id_load(&alloc2, "id_mem_test")) {
+        goto done;
+    }
+    if (alloc2.start_id != 300U || alloc2.end_id != 305U) {
+        goto done;
+    }
+    if (!osfx_id_release(&alloc2, aid)) {
+        goto done;
+    }
+
+    ok = 1;
+
+done:
+    osfx_storage_set_backend(prev);
+    if (!ok) {
+        printf("[FAIL] id storage backend abstraction failed\n");
+    }
+    return ok;
 }
 
 typedef struct test_matrix_ctx {
@@ -1034,6 +1198,7 @@ int main(void) {
     ok = ok && test_secure_session_store();
     ok = ok && test_secure_payload_pipeline();
     ok = ok && test_id_allocator_persistence();
+    ok = ok && test_id_allocator_storage_backend();
     ok = ok && test_protocol_matrix_runtime();
     ok = ok && test_handshake_dispatch_flow();
     ok = ok && test_service_runtime_p2();

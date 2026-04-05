@@ -1,9 +1,9 @@
-# 09 Mirror Coverage Report
+﻿# 09 Mirror Coverage Report
 
 ## 对比基准
 
 - Source platform: `OpenSynaptic`
-- Target runtime: `osfx-c99`
+- Target runtime: `OSynaptic-FX`
 
 ## 镜像覆盖结论
 
@@ -38,4 +38,5 @@
 ## 备注
 
 本报告用于说明“能力边界一致性”，不是要求实现细节逐行相同。
+
 

@@ -1,13 +1,13 @@
-# Contributing to OSynapptic-FX
+﻿# Contributing to OSynaptic-FX
 
-Thank you for your interest in contributing to OSynapptic-FX! This document provides guidelines and instructions for contributing to the project.
+Thank you for your interest in contributing to OSynaptic-FX! This document provides guidelines and instructions for contributing to the project.
 
 ## Getting Started
 
 ### Prerequisites
 
 - Knowledge of C99 programming language
-- CMake (version 3.15 or later)
+- Arduino IDE 2.x or Arduino CLI (for library integration validation)
 - Familiarity with embedded systems development
 - Understanding of the project's specification documents
 
@@ -15,8 +15,8 @@ Thank you for your interest in contributing to OSynapptic-FX! This document prov
 
 1. **Clone the repository:**
    ```powershell
-   git clone https://github.com/your-org/OSynapptic-FX.git
-   cd OSynapptic-FX
+   git clone https://github.com/REPLACE_WITH_REAL_ORG/OSynaptic-FX.git
+   cd OSynaptic-FX
    ```
 
 2. **Review project documentation:**
@@ -28,10 +28,9 @@ Thank you for your interest in contributing to OSynapptic-FX! This document prov
    ```powershell
    # Using the build script
    powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Compiler auto
-   
-   # Or using CMake directly
-   cmake -S . -B build_cmake
-   cmake --build build_cmake --config Release
+
+   # Validate Arduino example build (adjust FQBN to your target)
+   arduino-cli compile --fqbn arduino:avr:uno .\examples\BasicEncode
    ```
 
 4. **Run tests locally:**
@@ -191,7 +190,8 @@ When reporting bugs, include:
 1. **Environment details**
    - OS and version
    - Compiler and version
-   - CMake version
+   - Arduino IDE/CLI version
+   - Board core package and FQBN
    - Any relevant configuration
 
 2. **Reproduction steps**
@@ -234,5 +234,5 @@ When proposing new features:
 
 This project adheres to the Code of Conduct. By participating, you are expected to uphold this code. Please report unacceptable behavior to the project maintainers.
 
-Thank you for contributing to OSynapptic-FX!
+Thank you for contributing to OSynaptic-FX!
 

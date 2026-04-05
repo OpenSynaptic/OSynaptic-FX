@@ -1,4 +1,4 @@
-# Changelog Entry Template
+﻿# Changelog Entry Template
 
 ## [<version>] - <yyyy-mm-dd>
 
@@ -20,7 +20,8 @@
 
 ### Notes
 
-- Quality gate report: `osfx-c99/build/quality_gate_report.md`
-- Release notes: `osfx-c99/docs/08-release-notes.md`
-- Mirror coverage: `osfx-c99/docs/09-mirror-coverage-report.md`
+- Quality gate report: `build/quality_gate_report.md`
+- Release notes: `OSynaptic-FX/docs/08-release-notes.md`
+- Mirror coverage: `OSynaptic-FX/docs/09-mirror-coverage-report.md`
+
 

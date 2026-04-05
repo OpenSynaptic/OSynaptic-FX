@@ -6,10 +6,10 @@
 #include "osfx_user_config.h"
 
 #ifndef OSFX_ENABLE_FILE_IO
-#define OSFX_ENABLE_FILE_IO 0
+#define OSFX_ENABLE_FILE_IO 1
 #endif
 #ifndef OSFX_ENABLE_CLI
-#define OSFX_ENABLE_CLI 0
+#define OSFX_ENABLE_CLI 1
 #endif
 
 #ifndef OSFX_CFG_PLUGIN_TRANSPORT
@@ -64,6 +64,22 @@
 #endif
 #ifndef OSFX_CFG_PAYLOAD_RESOURCE_URL
 #define OSFX_CFG_PAYLOAD_RESOURCE_URL 0
+#endif
+
+#ifndef OSFX_CFG_MULTI_SENSOR_BODY_CAP
+#define OSFX_CFG_MULTI_SENSOR_BODY_CAP 4096
+#endif
+
+/*
+ * When enabled, multi-sensor encode/decode uses static scratch buffers
+ * instead of large stack allocations.
+ */
+#ifndef OSFX_CFG_MULTI_SENSOR_STATIC_SCRATCH
+#if defined(ARDUINO) || defined(ESP32) || defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_RP2040) || defined(ARDUINO_ARCH_MBED_RP2040)
+#define OSFX_CFG_MULTI_SENSOR_STATIC_SCRATCH 1
+#else
+#define OSFX_CFG_MULTI_SENSOR_STATIC_SCRATCH 0
+#endif
 #endif
 
 #endif

@@ -1,4 +1,4 @@
-# Security Policy
+﻿# Security Policy
 
 ## Supported Versions
 
@@ -14,7 +14,7 @@ We provide security updates for the following versions:
 
 ### For Embedded Systems Integrators
 
-OSynapptic-FX is designed for embedded systems with security features including:
+OSynaptic-FX is designed for embedded systems with security features including:
 
 - **Secure session persistence** - Cryptographic state management
 - **Payload encryption** - End-to-end data protection
@@ -95,7 +95,7 @@ Subscribe to release notifications to stay informed of security updates.
 ### Before Deployment
 
 1. **Security review checklist:**
-   - [ ] Latest version of OSynapptic-FX in use
+   - [ ] Latest version of OSynaptic-FX in use
    - [ ] Cryptographic keys securely provisioned
    - [ ] Input validation implemented for protocol data
    - [ ] Memory bounds and stack usage verified
@@ -143,7 +143,7 @@ Subscribe to release notifications to stay informed of security updates.
 
 ### Not in Scope
 
-The following are outside the scope of OSynapptic-FX security:
+The following are outside the scope of OSynaptic-FX security:
 - Compiler security properties
 - Operating system kernel security
 - Network transport layer security (provide your own)
@@ -166,8 +166,8 @@ Results are available in:
 ## Dependencies
 
 The project aims to minimize external dependencies to reduce the attack surface. Current build-time only dependencies are:
-- **CMake** (build tool)
 - **C99 compiler** (toolchain)
+- **Arduino build toolchain** (Arduino IDE/CLI board packages)
 - **Platform SDKs** (for cross-compilation)
 
 **Note**: No runtime cryptographic libraries are directly linked. Cryptographic code is provided as part of this package.

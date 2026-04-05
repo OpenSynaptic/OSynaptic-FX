@@ -1,6 +1,6 @@
-# 18 OpenSynaptic Standard Data Format Definition (Normative)
+﻿# 18 OpenSynaptic Standard Data Format Definition (Normative)
 
-This document provides strict definitions for the standard data formats used in the current `osfx-c99` implementation. Unless otherwise stated, all multi-byte integers are in **big-endian** byte order.
+This document provides strict definitions for the standard data formats used in the current `OSynaptic-FX` implementation. Unless otherwise stated, all multi-byte integers are in **big-endian** byte order.
 
 ## A.1 Data Frame (DATA_*) Wire Format
 
@@ -243,4 +243,5 @@ This avoids parser incompatibility on receiving side caused by extended template
 - Data processing pipeline: `../DATA_FORMATS_SPEC.md`
 - Standardized units: `docs/19-input-specification.md` or corresponding standardized units documentation
 - Implementation examples: `docs/16-examples-cookbook.md`
+
 

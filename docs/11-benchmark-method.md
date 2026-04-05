@@ -1,4 +1,6 @@
-# 11 Benchmark Method
+﻿# 11 Benchmark Method
+
+> Maintainer performance-calibration document. Arduino users can skip this unless they are validating release-level performance baselines.
 
 ## 目标指标
 
@@ -15,20 +17,20 @@
 
 ## 输出
 
-- CSV：`osfx-c99/build/bench/bench_report.csv`
-- Markdown：`osfx-c99/build/bench/bench_report.md`
+- CSV：`build/bench/bench_report.csv`
+- Markdown：`build/bench/bench_report.md`
 
 ## 运行命令
 
 ```powershell
 # 默认带 16KB 内存上限锁
-powershell -ExecutionPolicy Bypass -File .\osfx-c99\scripts\bench.ps1 -Compiler auto
+powershell -ExecutionPolicy Bypass -File .\\scripts\bench.ps1 -Compiler auto
 
 # 覆盖默认上限（单位 KB）
-powershell -ExecutionPolicy Bypass -File .\osfx-c99\scripts\bench.ps1 -Compiler auto -MemoryLimitKB 64
+powershell -ExecutionPolicy Bypass -File .\\scripts\bench.ps1 -Compiler auto -MemoryLimitKB 64
 
 # 显式关闭内存上限锁
-powershell -ExecutionPolicy Bypass -File .\osfx-c99\scripts\bench.ps1 -Compiler auto -MemoryLimitKB 0
+powershell -ExecutionPolicy Bypass -File .\\scripts\bench.ps1 -Compiler auto -MemoryLimitKB 0
 ```
 
 ## 口径说明
@@ -41,4 +43,5 @@ powershell -ExecutionPolicy Bypass -File .\osfx-c99\scripts\bench.ps1 -Compiler 
 - `-MemoryLimitKB` 大于 0 时启用内存上限锁：`working_set_delta_kb > limit` 则基准返回失败。
 - `-MemoryLimitKB 0` 时关闭内存上限锁。
 - 即使超限，仍会生成 `bench_report.csv` 与 `bench_report.md`，便于发布复盘。
+
 

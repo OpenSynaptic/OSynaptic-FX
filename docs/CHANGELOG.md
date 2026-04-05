@@ -1,6 +1,6 @@
-# Changelog
+﻿# Changelog
 
-All notable changes to `osfx-c99` are documented in this file.
+All notable changes to `OSynaptic-FX` are documented in this file.
 
 ## [v1.0.0-p5] - 2026-04-04
 
@@ -28,4 +28,5 @@ All notable changes to `osfx-c99` are documented in this file.
   - `sql`
   - `dependency_manager`
   - `env_guard`
+
 

@@ -11,6 +11,7 @@
 #include "osfx_fusion_state.h"
 #include "osfx_template_grammar.h"
 #include "osfx_library_catalog.h"
+#include "osfx_storage.h"
 #include "osfx_transporter_runtime.h"
 #include "osfx_secure_session.h"
 #include "osfx_id_allocator.h"

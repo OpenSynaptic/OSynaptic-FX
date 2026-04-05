@@ -1,6 +1,13 @@
-# osfx-c99 Documentation Library
+﻿# OSynaptic-FX Documentation Library
 
-This directory contains the complete delivery documentation library for `osfx-c99`, covering architecture, APIs, plugin scope, CLI, quality gates, release, and acceptance.
+This directory contains the complete delivery documentation library for `OSynaptic-FX`, with Arduino Libraries Manager delivery as the primary consumer path and native scripts as maintainer QA tooling.
+
+## Arduino-First Entry
+
+- Library metadata: `library.properties`
+- Arduino public include entry: `src/OSynapticFX.h`
+- Arduino practical sketches: `examples/`
+- Arduino example playbook: `docs/16-examples-cookbook.md`
 
 ## Reading Entry Points
 
@@ -24,10 +31,12 @@ This directory contains the complete delivery documentation library for `osfx-c9
 - Glue Code Step-by-Step Explanation: `docs/17-glue-step-by-step.md`
 - Standardized Units Table: `docs/18-standardized-units.md`
 - Input Specification (Send Rules and Fields): `docs/19-input-specification.md`
+- Arduino Easy API: `docs/20-arduino-easy-api.md`
 - Version Changelog: `docs/CHANGELOG.md`
 
 ## Current Documentation Baseline
 
 - Plugin Policy: Only includes `transport` (lite), `test_plugin` (lite), `port_forwarder` (full).
 - Explicit Exclusions: `web`, `sql`, `dependency_manager`, `env_guard`, and other service plugins.
-- Quality Gate: Supports `clang/gcc/cl` matrix verification with report artifact at `osfx-c99/build/quality_gate_report.md`.
+- Maintainer Quality Gate: Supports `clang/gcc/cl` matrix verification with report artifact at `build/quality_gate_report.md`.
+

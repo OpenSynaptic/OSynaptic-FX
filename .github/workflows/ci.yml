@@ -1,0 +1,127 @@
+﻿name: CI
+
+on:
+  push:
+    branches: ["main", "dev", "release/**"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─── Quality Gate: GCC ─────────────────────────────────────────────────────
+  quality-gcc:
+    name: Quality Gate (GCC)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure GCC is on PATH
+        shell: pwsh
+        run: |
+          if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) {
+            choco install mingw --yes --no-progress
+          }
+          gcc --version
+
+      - name: Build & Test
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+          & powershell -ExecutionPolicy Bypass -File scripts\test.ps1 -Compiler gcc
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-gate-gcc
+          path: build/quality_gate_report.md
+          if-no-files-found: ignore
+
+  # ─── Quality Gate: Clang ───────────────────────────────────────────────────
+  quality-clang:
+    name: Quality Gate (Clang)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install LLVM (clang)
+        run: choco install llvm --yes --no-progress
+
+      - name: Build & Test
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+          & powershell -ExecutionPolicy Bypass -File scripts\test.ps1 -Compiler clang
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-gate-clang
+          path: build/quality_gate_report.md
+          if-no-files-found: ignore
+
+  # ─── Quality Gate: MSVC ────────────────────────────────────────────────────
+  quality-msvc:
+    name: Quality Gate (MSVC)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up MSVC x64
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build & Test
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+          & powershell -ExecutionPolicy Bypass -File scripts\test.ps1 -Compiler cl
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-gate-msvc
+          path: build/quality_gate_report.md
+          if-no-files-found: ignore
+
+  # ─── Benchmark Gate ────────────────────────────────────────────────────────
+  bench:
+    name: Benchmark Gate
+    runs-on: windows-latest
+    needs: quality-gcc
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure GCC is on PATH
+        shell: pwsh
+        run: |
+          if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) {
+            choco install mingw --yes --no-progress
+          }
+
+      - name: Run benchmark
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+          & powershell -ExecutionPolicy Bypass -File scripts\bench.ps1 -Compiler gcc -MemoryLimitKB 0
+
+      - name: Upload bench reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-reports
+          path: |
+            build/bench/bench_report.md
+            build/bench/bench_report.csv
+          if-no-files-found: ignore
+

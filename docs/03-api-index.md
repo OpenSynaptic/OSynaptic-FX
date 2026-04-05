@@ -9,6 +9,16 @@
   - `osfx_core_encode_multi_sensor_packet_auto`
   - `osfx_core_decode_multi_sensor_packet_auto`
 
+## Easy API
+
+- Header file: `include/osfx_easy.h`
+- Main capabilities:
+  - `osfx_easy_init`
+  - `osfx_easy_init_id_allocator`
+  - `osfx_easy_allocate_aid`
+  - `osfx_easy_encode_sensor_auto`
+  - `osfx_easy_encode_multi_sensor_auto`
+
 ## Packet & Fusion
 
 - `include/osfx_fusion_packet.h`

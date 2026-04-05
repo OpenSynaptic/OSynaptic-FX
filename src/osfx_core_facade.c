@@ -6,6 +6,25 @@
 
 #define OSFX_VALUE_SCALE 10000.0
 
+#ifndef OSFX_CFG_MULTI_SENSOR_BODY_CAP
+#define OSFX_CFG_MULTI_SENSOR_BODY_CAP 4096
+#endif
+
+#ifndef OSFX_CFG_MULTI_SENSOR_STATIC_SCRATCH
+#define OSFX_CFG_MULTI_SENSOR_STATIC_SCRATCH 0
+#endif
+
+#if OSFX_CFG_MULTI_SENSOR_STATIC_SCRATCH
+/*
+ * Stack-safe mode for constrained boards:
+ * use static scratch blocks instead of per-call 4KB+ local arrays.
+ */
+static osfx_sensor_slot g_multi_sensor_slots[OSFX_TMPL_MAX_SENSORS];
+static char g_multi_sensor_encode_body[OSFX_CFG_MULTI_SENSOR_BODY_CAP];
+static uint8_t g_multi_sensor_decode_body[OSFX_CFG_MULTI_SENSOR_BODY_CAP];
+static osfx_template_msg g_multi_sensor_decode_msg;
+#endif
+
 static int copy_text(char* out, size_t cap, const char* src) {
     size_t n;
     if (!out || cap == 0 || !src) {
@@ -163,14 +182,12 @@ int osfx_core_encode_sensor_packet_auto(
     uint8_t* out_cmd
 ) {
     double std_value = 0.0;
-    char std_unit[16];
-    char value_b62[64];
-    char body[192];
+    char std_unit[OSFX_TMPL_UNIT_MAX];
+    char value_b62[OSFX_TMPL_VALUE_MAX];
+    char ts_token[OSFX_TMPL_TS_MAX];
+    osfx_sensor_slot slot;
+    char body[256];
     long long scaled;
-    size_t sid_len;
-    size_t unit_len;
-    size_t b62_len;
-    size_t body_len;
 
     if (!st || !sensor_id || !input_unit || !out_packet || !out_packet_len) {
         return 0;
@@ -185,19 +202,27 @@ int osfx_core_encode_sensor_packet_auto(
         return 0;
     }
 
-    sid_len = strlen(sensor_id);
-    unit_len = strlen(std_unit);
-    b62_len = strlen(value_b62);
-    body_len = sid_len + 1U + unit_len + 1U + b62_len;
-    if (body_len + 1U > sizeof(body)) {
+    if (snprintf(ts_token, sizeof(ts_token), "%llu", (unsigned long long)timestamp_raw) <= 0) {
         return 0;
     }
 
-    memcpy(body, sensor_id, sid_len);
-    body[sid_len] = '|';
-    memcpy(body + sid_len + 1U, std_unit, unit_len);
-    body[sid_len + 1U + unit_len] = '|';
-    memcpy(body + sid_len + 1U + unit_len + 1U, value_b62, b62_len);
+    memset(&slot, 0, sizeof(slot));
+    if (!copy_text(slot.sensor_id, sizeof(slot.sensor_id), sensor_id)) {
+        return 0;
+    }
+    if (!copy_text(slot.sensor_state, sizeof(slot.sensor_state), "OK")) {
+        return 0;
+    }
+    if (!copy_text(slot.sensor_unit, sizeof(slot.sensor_unit), std_unit)) {
+        return 0;
+    }
+    if (!copy_text(slot.sensor_value, sizeof(slot.sensor_value), value_b62)) {
+        return 0;
+    }
+
+    if (!osfx_template_encode("NODE", "ONLINE", ts_token, &slot, 1, body, sizeof(body))) {
+        return 0;
+    }
 
     return osfx_fusion_encode(
         st,
@@ -205,7 +230,7 @@ int osfx_core_encode_sensor_packet_auto(
         tid,
         timestamp_raw,
         (const uint8_t*)body,
-        body_len,
+        strlen(body),
         out_packet,
         out_packet_cap,
         out_packet_len,
@@ -224,23 +249,45 @@ int osfx_core_decode_sensor_packet_auto(
     size_t out_unit_cap,
     osfx_packet_meta* out_meta
 ) {
-    uint8_t body[192];
+    uint8_t body[256];
     size_t body_len = 0;
+    osfx_template_msg msg;
+    int ok = 0;
+    long long scaled;
+
     if (!st || !packet || packet_len == 0) {
         return 0;
     }
     if (!osfx_fusion_decode_apply(st, packet, packet_len, body, sizeof(body), &body_len, out_meta)) {
         return 0;
     }
-    return osfx_core_decode_sensor_body(
-        body,
-        body_len,
-        out_sensor_id,
-        out_sensor_id_cap,
-        out_value,
-        out_unit,
-        out_unit_cap
-    );
+    if (body_len + 1U > sizeof(body)) {
+        return 0;
+    }
+    body[body_len] = '\0';
+
+    if (!osfx_template_decode((const char*)body, &msg) || msg.sensor_count == 0) {
+        return 0;
+    }
+
+    if (out_sensor_id && out_sensor_id_cap > 0) {
+        if (!copy_text(out_sensor_id, out_sensor_id_cap, msg.sensors[0].sensor_id)) {
+            return 0;
+        }
+    }
+    if (out_unit && out_unit_cap > 0) {
+        if (!copy_text(out_unit, out_unit_cap, msg.sensors[0].sensor_unit)) {
+            return 0;
+        }
+    }
+    if (out_value) {
+        scaled = osfx_b62_decode_i64(msg.sensors[0].sensor_value, &ok);
+        if (!ok) {
+            return 0;
+        }
+        *out_value = (double)scaled / OSFX_VALUE_SCALE;
+    }
+    return 1;
 }
 
 int osfx_core_encode_sensor_packet_secure(
@@ -362,8 +409,13 @@ int osfx_core_encode_multi_sensor_packet_auto(
     int* out_packet_len,
     uint8_t* out_cmd
 ) {
-    osfx_sensor_slot slots[OSFX_TMPL_MAX_SENSORS];
-    char body[4096];
+    osfx_sensor_slot* slots;
+    char* body;
+    const size_t body_cap = (size_t)OSFX_CFG_MULTI_SENSOR_BODY_CAP;
+#if !OSFX_CFG_MULTI_SENSOR_STATIC_SCRATCH
+    osfx_sensor_slot slots_local[OSFX_TMPL_MAX_SENSORS];
+    char body_local[OSFX_CFG_MULTI_SENSOR_BODY_CAP];
+#endif
     char ts_token[OSFX_TMPL_TS_MAX];
     size_t i;
 
@@ -379,6 +431,14 @@ int osfx_core_encode_multi_sensor_packet_auto(
         return 0;
     }
 
+#if OSFX_CFG_MULTI_SENSOR_STATIC_SCRATCH
+    slots = g_multi_sensor_slots;
+    body = g_multi_sensor_encode_body;
+#else
+    slots = slots_local;
+    body = body_local;
+#endif
+
     #if OSFX_CFG_PAYLOAD_SUB_TEMPLATE_ID == 0
     effective_tid = 0U;
     #endif
@@ -391,7 +451,7 @@ int osfx_core_encode_multi_sensor_packet_auto(
     effective_node_state = "NA";
     #endif
 
-    memset(slots, 0, sizeof(slots));
+    memset(slots, 0, sizeof(osfx_sensor_slot) * OSFX_TMPL_MAX_SENSORS);
     for (i = 0; i < sensor_count; ++i) {
         double std_value = 0.0;
         char std_unit[OSFX_TMPL_UNIT_MAX];
@@ -449,31 +509,19 @@ int osfx_core_encode_multi_sensor_packet_auto(
         }
         #endif
 
-        #if OSFX_CFG_PAYLOAD_GEOHASH_ID == 0
-        if (!copy_text(slots[i].geohash_id, sizeof(slots[i].geohash_id), "")) {
-            return 0;
-        }
-        #else
+        #if OSFX_CFG_PAYLOAD_GEOHASH_ID
         if (!copy_text(slots[i].geohash_id, sizeof(slots[i].geohash_id), sensors[i].geohash_id ? sensors[i].geohash_id : "")) {
             return 0;
         }
         #endif
 
-        #if OSFX_CFG_PAYLOAD_SUPPLEMENTARY_MESSAGE == 0
-        if (!copy_text(slots[i].supplementary_message, sizeof(slots[i].supplementary_message), "")) {
-            return 0;
-        }
-        #else
+        #if OSFX_CFG_PAYLOAD_SUPPLEMENTARY_MESSAGE
         if (!copy_text(slots[i].supplementary_message, sizeof(slots[i].supplementary_message), sensors[i].supplementary_message ? sensors[i].supplementary_message : "")) {
             return 0;
         }
         #endif
 
-        #if OSFX_CFG_PAYLOAD_RESOURCE_URL == 0
-        if (!copy_text(slots[i].resource_url, sizeof(slots[i].resource_url), "")) {
-            return 0;
-        }
-        #else
+        #if OSFX_CFG_PAYLOAD_RESOURCE_URL
         if (!copy_text(slots[i].resource_url, sizeof(slots[i].resource_url), sensors[i].resource_url ? sensors[i].resource_url : "")) {
             return 0;
         }
@@ -487,7 +535,7 @@ int osfx_core_encode_multi_sensor_packet_auto(
     effective_ts_token = "0";
     #endif
 
-    if (!osfx_template_encode(effective_node_id, effective_node_state, effective_ts_token, slots, sensor_count, body, sizeof(body))) {
+    if (!osfx_template_encode(effective_node_id, effective_node_state, effective_ts_token, slots, sensor_count, body, body_cap)) {
         return 0;
     }
 
@@ -518,64 +566,84 @@ int osfx_core_decode_multi_sensor_packet_auto(
     size_t* out_sensor_count,
     osfx_packet_meta* out_meta
 ) {
-    uint8_t body[4096];
+    uint8_t* body;
+    osfx_template_msg* msg;
+    const size_t body_cap = (size_t)OSFX_CFG_MULTI_SENSOR_BODY_CAP;
+#if !OSFX_CFG_MULTI_SENSOR_STATIC_SCRATCH
+    uint8_t body_local[OSFX_CFG_MULTI_SENSOR_BODY_CAP];
+    osfx_template_msg msg_local;
+#endif
     size_t body_len = 0;
-    osfx_template_msg msg;
     size_t i;
 
     if (!st || !packet || !out_node_id || !out_node_state || !out_sensors || !out_sensor_count) {
         return 0;
     }
-    if (!osfx_fusion_decode_apply(st, packet, packet_len, body, sizeof(body), &body_len, out_meta)) {
+
+#if OSFX_CFG_MULTI_SENSOR_STATIC_SCRATCH
+    body = g_multi_sensor_decode_body;
+    msg = &g_multi_sensor_decode_msg;
+#else
+    body = body_local;
+    msg = &msg_local;
+#endif
+
+    if (!osfx_fusion_decode_apply(st, packet, packet_len, body, body_cap, &body_len, out_meta)) {
         return 0;
     }
-    if (body_len + 1 > sizeof(body)) {
+    if (body_len + 1 > body_cap) {
         return 0;
     }
     body[body_len] = '\0';
 
-    if (!osfx_template_decode((const char*)body, &msg)) {
+    if (!osfx_template_decode((const char*)body, msg)) {
         return 0;
     }
-    if (!copy_text(out_node_id, out_node_id_cap, msg.node_id)) {
+    if (!copy_text(out_node_id, out_node_id_cap, msg->node_id)) {
         return 0;
     }
-    if (!copy_text(out_node_state, out_node_state_cap, msg.node_state)) {
+    if (!copy_text(out_node_state, out_node_state_cap, msg->node_state)) {
         return 0;
     }
-    if (msg.sensor_count > out_sensors_cap) {
+    if (msg->sensor_count > out_sensors_cap) {
         return 0;
     }
 
-    for (i = 0; i < msg.sensor_count; ++i) {
+    for (i = 0; i < msg->sensor_count; ++i) {
         int ok = 0;
-        long long scaled = osfx_b62_decode_i64(msg.sensors[i].sensor_value, &ok);
+        long long scaled = osfx_b62_decode_i64(msg->sensors[i].sensor_value, &ok);
         if (!ok) {
             return 0;
         }
         memset(&out_sensors[i], 0, sizeof(out_sensors[i]));
-        if (!copy_text(out_sensors[i].sensor_id, sizeof(out_sensors[i].sensor_id), msg.sensors[i].sensor_id)) {
+        if (!copy_text(out_sensors[i].sensor_id, sizeof(out_sensors[i].sensor_id), msg->sensors[i].sensor_id)) {
             return 0;
         }
-        if (!copy_text(out_sensors[i].sensor_state, sizeof(out_sensors[i].sensor_state), msg.sensors[i].sensor_state)) {
+        if (!copy_text(out_sensors[i].sensor_state, sizeof(out_sensors[i].sensor_state), msg->sensors[i].sensor_state)) {
             return 0;
         }
-        if (!copy_text(out_sensors[i].unit, sizeof(out_sensors[i].unit), msg.sensors[i].sensor_unit)) {
+        if (!copy_text(out_sensors[i].unit, sizeof(out_sensors[i].unit), msg->sensors[i].sensor_unit)) {
             return 0;
         }
-        if (!copy_text(out_sensors[i].geohash_id, sizeof(out_sensors[i].geohash_id), msg.sensors[i].geohash_id)) {
+#if OSFX_CFG_PAYLOAD_GEOHASH_ID
+        if (!copy_text(out_sensors[i].geohash_id, sizeof(out_sensors[i].geohash_id), msg->sensors[i].geohash_id)) {
             return 0;
         }
-        if (!copy_text(out_sensors[i].supplementary_message, sizeof(out_sensors[i].supplementary_message), msg.sensors[i].supplementary_message)) {
+#endif
+#if OSFX_CFG_PAYLOAD_SUPPLEMENTARY_MESSAGE
+        if (!copy_text(out_sensors[i].supplementary_message, sizeof(out_sensors[i].supplementary_message), msg->sensors[i].supplementary_message)) {
             return 0;
         }
-        if (!copy_text(out_sensors[i].resource_url, sizeof(out_sensors[i].resource_url), msg.sensors[i].resource_url)) {
+#endif
+#if OSFX_CFG_PAYLOAD_RESOURCE_URL
+        if (!copy_text(out_sensors[i].resource_url, sizeof(out_sensors[i].resource_url), msg->sensors[i].resource_url)) {
             return 0;
         }
+#endif
         out_sensors[i].value = (double)scaled / OSFX_VALUE_SCALE;
     }
 
-    *out_sensor_count = msg.sensor_count;
+    *out_sensor_count = msg->sensor_count;
     return 1;
 }
 

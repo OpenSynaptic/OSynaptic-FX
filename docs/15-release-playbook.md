@@ -1,27 +1,38 @@
-# 15 Release Playbook
+﻿# 15 Release Playbook
 
 ## Goal
 
-Produce a release package with validated quality gate, benchmark evidence, and complete docs.
+Produce an Arduino-library-first release package with validated example compile checks, quality gate evidence, and complete docs.
+
+## Step 0: Arduino Package Integrity
+
+- Verify `library.properties` version and metadata completeness.
+- Verify `src/OSynapticFX.h` remains the public Arduino include entry.
+- Ensure `examples/` includes at least 5 practical sketches.
+
+```powershell
+arduino-cli compile --fqbn arduino:avr:uno .\examples\BasicEncode
+arduino-cli compile --fqbn arduino:avr:uno .\examples\MultiSensorNodePacket
+```
 
 ## Step 1: Build + Tests
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\osfx-c99\scripts\build.ps1 -Compiler auto
-powershell -ExecutionPolicy Bypass -File .\osfx-c99\scripts\test.ps1 -Matrix
+powershell -ExecutionPolicy Bypass -File .\\scripts\build.ps1 -Compiler auto
+powershell -ExecutionPolicy Bypass -File .\\scripts\test.ps1 -Matrix
 ```
 
 ## Step 2: Benchmark Gate
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\osfx-c99\scripts\bench.ps1 -Compiler auto -MemoryLimitKB 16
+powershell -ExecutionPolicy Bypass -File .\\scripts\bench.ps1 -Compiler auto -MemoryLimitKB 16
 ```
 
 ## Step 3: Verify Reports
 
-- `osfx-c99/build/quality_gate_report.md`
-- `osfx-c99/build/bench/bench_report.md`
-- `osfx-c99/build/bench/bench_report.csv`
+- `build/quality_gate_report.md`
+- `build/bench/bench_report.md`
+- `build/bench/bench_report.csv`
 
 ## Step 4: Update Release Docs
 
@@ -36,8 +47,12 @@ Use checklist in `docs/10-acceptance-checklist.md` and mark all items complete.
 
 ## Deliverable Set
 
-- Static library output (`libosfx_core.a` / `osfx_core.lib`)
+- Arduino metadata (`library.properties`)
+- Arduino include entry (`src/OSynapticFX.h`)
+- Practical sketches (`examples/`)
+- Static library output (`libosfx_core.a` / `osfx_core.lib`, maintainer artifact)
 - Quality gate report
 - Benchmark reports
 - Release notes + mirror coverage + changelog
+
 

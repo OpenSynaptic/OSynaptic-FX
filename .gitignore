@@ -1,17 +1,12 @@
-# Build output
+﻿# Build output
 build/
-build_cmake/
-
-# CMake generated files
-CMakeFiles/
-CMakeCache.txt
-cmake_install.cmake
-Makefile
 
 # Native artifacts
 *.o
 *.obj
 *.a
+!src/**/libOSynapticFX.a
+!extras/precompiled-non-arduino/*.a
 *.lib
 *.exe
 *.dll

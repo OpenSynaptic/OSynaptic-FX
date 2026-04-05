@@ -1,69 +1,66 @@
+/*
+ * osfx_cli_main.c
+ * ---------------
+ * Native-host entry point for the OSynaptic-FX CLI lite.
+ * Compile with: gcc -std=c99 -O2 -I include tools/osfx_cli_main.c build/libosfx_core.a -o osfx_cli
+ * Usage:        osfx_cli <command> [args...]
+ *               e.g.  osfx_cli plugin-list
+ *                     osfx_cli plugin-load transport
+ *                     osfx_cli transport-status
+ *                     osfx_cli test-plugin run component
+ */
+
+#include "../include/osfx_core.h"
+#include "../include/osfx_build_config.h"
+
 #include <stdio.h>
 #include <string.h>
 
-#include "osfx_core.h"
-#include "osfx_build_config.h"
-
-typedef struct cli_emit_ctx {
-    int emitted;
-    char last_proto[16];
-    uint16_t last_port;
-    size_t last_len;
-} cli_emit_ctx;
-
-static int matrix_emit(const char* protocol, const uint8_t* frame, size_t frame_len, void* user_ctx) {
-    cli_emit_ctx* ctx = (cli_emit_ctx*)user_ctx;
+static int matrix_emit_cb(const char* protocol, const uint8_t* frame, size_t frame_len, void* user_ctx) {
+    (void)user_ctx;
     (void)frame;
-    if (!ctx || !protocol) {
-        return 0;
-    }
-    ctx->emitted++;
-    strncpy(ctx->last_proto, protocol, sizeof(ctx->last_proto) - 1U);
-    ctx->last_proto[sizeof(ctx->last_proto) - 1U] = '\0';
-    ctx->last_len = frame_len;
+    (void)protocol;
+    (void)frame_len;
     return 1;
 }
 
-static int pf_emit(const char* to_proto, uint16_t to_port, const uint8_t* payload, size_t payload_len, void* user_ctx) {
-    cli_emit_ctx* ctx = (cli_emit_ctx*)user_ctx;
+static int pf_emit_cb(const char* to_proto, uint16_t to_port, const uint8_t* payload, size_t payload_len, void* user_ctx) {
+    (void)user_ctx;
+    (void)to_proto;
+    (void)to_port;
     (void)payload;
-    if (!ctx || !to_proto) {
-        return 0;
-    }
-    ctx->emitted++;
-    strncpy(ctx->last_proto, to_proto, sizeof(ctx->last_proto) - 1U);
-    ctx->last_proto[sizeof(ctx->last_proto) - 1U] = '\0';
-    ctx->last_port = to_port;
-    ctx->last_len = payload_len;
+    (void)payload_len;
     return 1;
 }
 
-int main(int argc, char** argv) {
-    osfx_protocol_matrix pm;
+int main(int argc, char* argv[]) {
+    osfx_protocol_matrix matrix;
     osfx_platform_runtime platform;
-    cli_emit_ctx emit_ctx;
     char out[1024];
     int ok;
 
-    memset(&emit_ctx, 0, sizeof(emit_ctx));
-    osfx_protocol_matrix_init(&pm, matrix_emit, &emit_ctx);
-    if (!osfx_protocol_matrix_register_defaults(&pm)) {
-        fprintf(stderr, "error=protocol_matrix_init_failed\n");
+    osfx_protocol_matrix_init(&matrix, matrix_emit_cb, NULL);
+    (void)osfx_protocol_matrix_register_defaults(&matrix);
+
+    osfx_platform_runtime_init(&platform, &matrix, pf_emit_cb, NULL);
+
+#if OSFX_CFG_AUTOLOAD_TRANSPORT
+    (void)osfx_platform_plugin_load(&platform, "transport", "");
+#endif
+#if OSFX_CFG_AUTOLOAD_TEST_PLUGIN
+    (void)osfx_platform_plugin_load(&platform, "test_plugin", "");
+#endif
+#if OSFX_CFG_AUTOLOAD_PORT_FORWARDER
+    (void)osfx_platform_plugin_load(&platform, "port_forwarder", "");
+#endif
+
+    if (argc < 2) {
+        printf("usage: osfx_cli <command> [args...]\n");
         return 1;
     }
-    osfx_platform_runtime_init(&platform, &pm, pf_emit, &emit_ctx);
-    #if OSFX_CFG_AUTOLOAD_TRANSPORT
-    osfx_platform_plugin_load(&platform, "transport", "");
-    #endif
-    #if OSFX_CFG_AUTOLOAD_TEST_PLUGIN
-    osfx_platform_plugin_load(&platform, "test_plugin", "");
-    #endif
-    #if OSFX_CFG_AUTOLOAD_PORT_FORWARDER
-    osfx_platform_plugin_load(&platform, "port_forwarder", "");
-    #endif
 
-    ok = osfx_cli_lite_run(&platform, argc - 1, (const char**)(argv + 1), out, sizeof(out));
-    puts(out);
+    out[0] = '\0';
+    ok = osfx_cli_lite_run(&platform, argc - 1, (const char**)&argv[1], out, sizeof(out));
+    printf("%s\n", out);
     return ok ? 0 : 1;
 }
-

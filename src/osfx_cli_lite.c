@@ -1,8 +1,10 @@
 #include "../include/osfx_cli_lite.h"
 #include "../include/osfx_build_config.h"
 
-#include <stdio.h>
 #include <string.h>
+#if OSFX_ENABLE_CLI
+#include <stdio.h>
+#endif
 
 static int append_token(char* out, size_t out_cap, const char* token) {
     size_t used;
@@ -46,7 +48,15 @@ int osfx_cli_lite_run(osfx_platform_runtime* rt, int argc, const char* argv[], c
     if (!out || out_cap == 0U) {
         return 0;
     }
-    snprintf(out, out_cap, "error=cli_disabled");
+    {
+        static const char msg[] = "error=cli_disabled";
+        size_t len = sizeof(msg) - 1U;
+        if (out_cap > len) {
+            memcpy(out, msg, len + 1U);
+        } else {
+            out[0] = '\0';
+        }
+    }
     return 0;
 #else
     if (!rt || !out || out_cap == 0U) {

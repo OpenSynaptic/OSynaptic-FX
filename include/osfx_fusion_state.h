@@ -6,23 +6,59 @@
 
 #include "osfx_fusion_packet.h"
 #include "osfx_handshake_cmd.h"
+#include "osfx_build_config.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define OSFX_FUSION_MAX_ENTRIES 64
-#define OSFX_FUSION_MAX_PREFIX 96
-#define OSFX_FUSION_MAX_VALUE 64
+/* Arduino/ESP32: osfx_fusion_state lives in DRAM (.bss).
+ * Each entry is ~260 bytes.
+ *   4  entries (~1.0 KB) — single-node device
+ *   32 entries (~8.3 KB) — gateway for up to ~30 nodes (default)
+ *   64 entries (~16.6 KB) — large gateway; verify free heap before using
+ * All constants are overridable via osfx_user_config.h. */
+#ifndef OSFX_FUSION_MAX_ENTRIES
+#define OSFX_FUSION_MAX_ENTRIES 32
+#endif
+#ifndef OSFX_FUSION_MAX_PREFIX
+#define OSFX_FUSION_MAX_PREFIX  64
+#endif
+/* Maximum number of value slots per entry (2 slots per sensor: META + VAL).
+ * Supports up to OSFX_FUSION_MAX_VALS/2 sensors per packet. */
+#ifndef OSFX_FUSION_MAX_VALS
+#define OSFX_FUSION_MAX_VALS    8
+#endif
+#ifndef OSFX_FUSION_MAX_VAL_LEN
+#define OSFX_FUSION_MAX_VAL_LEN 16
+#endif
+/* Maximum number of sensors and tag-name length per entry. */
+#ifndef OSFX_FUSION_MAX_SENSORS
+#define OSFX_FUSION_MAX_SENSORS 4
+#endif
+#ifndef OSFX_FUSION_MAX_TAG_LEN
+#define OSFX_FUSION_MAX_TAG_LEN 12
+#endif
 
 typedef struct osfx_fusion_entry {
     uint32_t source_aid;
+    /* Pack small fields together after source_aid to avoid padding waste.
+     * uint8_t × 4 = 4 bytes (fits the natural alignment gap after uint32_t). */
     uint8_t tid;
-    char prefix[OSFX_FUSION_MAX_PREFIX];
-    size_t prefix_len;
-    char last_value[OSFX_FUSION_MAX_VALUE];
-    size_t last_value_len;
-    int used;
+    uint8_t sensor_count;  /* max OSFX_FUSION_MAX_SENSORS  (<= 255) */
+    uint8_t val_count;     /* == 2 * sensor_count           (<= 255) */
+    uint8_t used;          /* boolean: 0 or 1 */
+    /* Structural identity: "NodeID.State." (header without timestamp).
+     * null-terminated; length is derived with strnlen when needed. */
+    char sig_base[OSFX_FUSION_MAX_PREFIX];
+    /* Sensor tag names (e.g. "TEMP", "HUM") — part of structural identity. */
+    char tag_names[OSFX_FUSION_MAX_SENSORS][OSFX_FUSION_MAX_TAG_LEN];
+    uint8_t tag_name_lens[OSFX_FUSION_MAX_SENSORS];
+    /* Per-slot value cache: layout {META_0, VAL_0, META_1, VAL_1, ...}
+     * Matches the order produced by Rust auto_decompose_input_inner so the
+     * binary DIFF body is directly compatible with the Rust DLL decoder. */
+    char last_vals[OSFX_FUSION_MAX_VALS][OSFX_FUSION_MAX_VAL_LEN];
+    uint8_t last_val_lens[OSFX_FUSION_MAX_VALS];
 } osfx_fusion_entry;
 
 typedef struct osfx_fusion_state {

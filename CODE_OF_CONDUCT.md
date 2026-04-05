@@ -1,8 +1,8 @@
-# Code of Conduct
+﻿# Code of Conduct
 
 ## Our Commitment
 
-We are committed to providing a welcoming and inspiring community for all. We pledge that everyone participating in the OSynapptic-FX community and its spaces will be treated with respect and dignity.
+We are committed to providing a welcoming and inspiring community for all. We pledge that everyone participating in the OSynaptic-FX community and its spaces will be treated with respect and dignity.
 
 ## Our Standards
 

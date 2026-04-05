@@ -1,9 +1,8 @@
 #include "../include/osfx_id_allocator.h"
 #include "../include/osfx_build_config.h"
+#include "../include/osfx_storage.h"
 
-#if OSFX_ENABLE_FILE_IO
 #include <stdio.h>
-#endif
 #include <string.h>
 
 static uint32_t count_in_use(const osfx_id_allocator* alloc) {
@@ -248,63 +247,87 @@ int osfx_id_touch(osfx_id_allocator* alloc, uint32_t aid, uint64_t now_ts) {
 }
 
 int osfx_id_save(const osfx_id_allocator* alloc, const char* path) {
-#if !OSFX_ENABLE_FILE_IO
-    (void)alloc;
-    (void)path;
-    return 0;
-#else
-    FILE* fp;
+    osfx_storage_writer writer;
     size_t i;
+    char line[192];
     if (!alloc || !path) {
         return 0;
     }
-    fp = fopen(path, "wb");
-    if (!fp) {
+    if (!osfx_storage_open_writer(path, &writer) || !writer.write || !writer.close) {
         return 0;
     }
-    fprintf(fp, "range,%u,%u,%llu\n", (unsigned)alloc->start_id, (unsigned)alloc->end_id, (unsigned long long)alloc->default_lease_seconds);
-    fprintf(fp, "policy,%llu,%llu,%.6f,%.6f,%d\n",
+
+    if (snprintf(
+            line,
+            sizeof(line),
+            "range,%u,%u,%llu\n",
+            (unsigned)alloc->start_id,
+            (unsigned)alloc->end_id,
+            (unsigned long long)alloc->default_lease_seconds
+        ) <= 0 || !writer.write(writer.handle, line)) {
+        (void)writer.close(writer.handle);
+        return 0;
+    }
+
+    if (snprintf(
+            line,
+            sizeof(line),
+            "policy,%llu,%llu,%.6f,%.6f,%d\n",
             (unsigned long long)alloc->min_lease_seconds,
             (unsigned long long)alloc->rate_window_seconds,
             alloc->high_rate_threshold_per_hour,
             alloc->high_rate_min_factor,
-            alloc->adaptive_enabled);
-    fprintf(fp, "policy_ex,%llu,%llu,%.6f,%.6f,%.6f\n",
+            alloc->adaptive_enabled
+        ) <= 0 || !writer.write(writer.handle, line)) {
+        (void)writer.close(writer.handle);
+        return 0;
+    }
+
+    if (snprintf(
+            line,
+            sizeof(line),
+            "policy_ex,%llu,%llu,%.6f,%.6f,%.6f\n",
             (unsigned long long)alloc->max_lease_seconds,
             (unsigned long long)alloc->rate_window_seconds,
             alloc->pressure_high_watermark,
             alloc->pressure_min_factor,
-            alloc->touch_extend_factor);
+            alloc->touch_extend_factor
+        ) <= 0 || !writer.write(writer.handle, line)) {
+        (void)writer.close(writer.handle);
+        return 0;
+    }
+
     for (i = 0; i < OSFX_ID_MAX_ENTRIES; ++i) {
         if (alloc->entries[i].in_use) {
-            fprintf(fp, "%u,%llu,%llu\n",
+            if (snprintf(
+                    line,
+                    sizeof(line),
+                    "%u,%llu,%llu\n",
                     (unsigned)alloc->entries[i].aid,
                     (unsigned long long)alloc->entries[i].leased_until,
-                    (unsigned long long)alloc->entries[i].last_seen);
+                    (unsigned long long)alloc->entries[i].last_seen
+                ) <= 0 || !writer.write(writer.handle, line)) {
+                (void)writer.close(writer.handle);
+                return 0;
+            }
         }
     }
-    fclose(fp);
-    return 1;
-#endif
+    return writer.close(writer.handle);
 }
 
 int osfx_id_load(osfx_id_allocator* alloc, const char* path) {
-#if !OSFX_ENABLE_FILE_IO
-    (void)alloc;
-    (void)path;
-    return 0;
-#else
-    FILE* fp;
+    osfx_storage_reader reader;
     char line[256];
+    int rc;
     if (!alloc || !path) {
         return 0;
     }
-    fp = fopen(path, "rb");
-    if (!fp) {
+    if (!osfx_storage_open_reader(path, &reader) || !reader.read_line || !reader.close) {
         return 0;
     }
+
     memset(alloc->entries, 0, sizeof(alloc->entries));
-    while (fgets(line, sizeof(line), fp)) {
+    while ((rc = reader.read_line(reader.handle, line, sizeof(line))) > 0) {
         unsigned aid = 0;
         unsigned long long leased_until = 0;
         unsigned long long last_seen = 0;
@@ -355,8 +378,10 @@ int osfx_id_load(osfx_id_allocator* alloc, const char* path) {
             }
         }
     }
-    fclose(fp);
-    return 1;
-#endif
+    if (rc < 0) {
+        (void)reader.close(reader.handle);
+        return 0;
+    }
+    return reader.close(reader.handle);
 }
 

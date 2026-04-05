@@ -1,0 +1,75 @@
+﻿# Syntax highlighting keywords for OSynaptic-FX Arduino library
+# Format: KEYWORD\tTOKENTYPE\tRSS_URL
+# TOKENTYPE: KEYWORD1 = datatype, KEYWORD2 = function, LITERAL1 = constant
+
+##################################
+# Types (KEYWORD1)
+##################################
+
+osfx_easy_context	KEYWORD1
+osfx_core_context	KEYWORD1
+osfx_core_sensor_input	KEYWORD1
+osfx_fusion_entry	KEYWORD1
+osfx_fusion_state	KEYWORD1
+osfx_template_msg	KEYWORD1
+osfx_sensor_slot	KEYWORD1
+osfx_secure_session	KEYWORD1
+osfx_id_allocator	KEYWORD1
+osfx_storage_backend	KEYWORD1
+
+##################################
+# osfx_easy API (KEYWORD2)
+##################################
+
+osfx_easy_init	KEYWORD2
+osfx_easy_set_node	KEYWORD2
+osfx_easy_set_tid	KEYWORD2
+osfx_easy_set_aid	KEYWORD2
+osfx_easy_init_id_allocator	KEYWORD2
+osfx_easy_allocate_aid	KEYWORD2
+osfx_easy_touch_aid	KEYWORD2
+osfx_easy_save_ids	KEYWORD2
+osfx_easy_load_ids	KEYWORD2
+osfx_easy_is_aid_ready	KEYWORD2
+osfx_easy_encode_sensor_auto	KEYWORD2
+osfx_easy_encode_multi_sensor_auto	KEYWORD2
+
+##################################
+# osfx_core API (KEYWORD2)
+##################################
+
+osfx_core_init	KEYWORD2
+osfx_core_encode_sensor	KEYWORD2
+osfx_core_decode_packet	KEYWORD2
+osfx_core_reset	KEYWORD2
+
+##################################
+# Fusion API (KEYWORD2)
+##################################
+
+osfx_fusion_init	KEYWORD2
+osfx_fusion_encode	KEYWORD2
+osfx_fusion_decode_apply	KEYWORD2
+osfx_fusion_reset	KEYWORD2
+
+##################################
+# Secure Session (KEYWORD2)
+##################################
+
+osfx_secure_session_init	KEYWORD2
+osfx_secure_session_encrypt	KEYWORD2
+osfx_secure_session_decrypt	KEYWORD2
+
+##################################
+# Constants (LITERAL1)
+##################################
+
+OSFX_FUSION_MAX_ENTRIES	LITERAL1
+OSFX_FUSION_MAX_VALS	LITERAL1
+OSFX_FUSION_MAX_VAL_LEN	LITERAL1
+OSFX_FUSION_MAX_SENSORS	LITERAL1
+OSFX_ID_MAX_ENTRIES	LITERAL1
+OSFX_CFG_MULTI_SENSOR_BODY_CAP	LITERAL1
+OSFX_CFG_PAYLOAD_GEOHASH	LITERAL1
+OSFX_CFG_PAYLOAD_SUPP_MSG	LITERAL1
+OSFX_CFG_PAYLOAD_RESOURCE_URL	LITERAL1

@@ -1,5 +1,7 @@
 # Documentation Summary
 
+Primary consumer path is Arduino library usage via `library.properties` + `examples/`; native script and CLI content is maintainer-oriented.
+
 ## 1. Core
 
 - `01-overview.md`: Project positioning, phase status, capability boundaries.
@@ -27,6 +29,7 @@
 - `17-glue-step-by-step.md`: Glue layer step-by-step code explanation.
 - `18-standardized-units.md`: User input units to standardized output mapping table.
 - `19-input-specification.md`: Input specification (send rules and field boundaries).
+- `20-arduino-easy-api.md`: Simplified Arduino-facing API and usage path.
 
 ## 4. Change Management
 

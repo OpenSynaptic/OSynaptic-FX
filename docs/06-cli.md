@@ -1,4 +1,6 @@
-# 06 CLI Lite Guide
+﻿# 06 CLI Lite Guide
+
+> This guide is maintainer-focused. Arduino library consumers should start from `examples/` first.
 
 ## Entry Point
 
@@ -18,54 +20,54 @@
 
 ```powershell
 # List plugins
-.\osfx-c99\build\osfx_cli_cl.exe plugin-list
+.\\build\osfx_cli_cl.exe plugin-list
 
 # Load transport and view status
-.\osfx-c99\build\osfx_cli_cl.exe plugin-load transport
-.\osfx-c99\build\osfx_cli_cl.exe transport-status
+.\\build\osfx_cli_cl.exe plugin-load transport
+.\\build\osfx_cli_cl.exe transport-status
 
 # Run test_plugin lightweight suite
-.\osfx-c99\build\osfx_cli_cl.exe test-plugin run component
+.\\build\osfx_cli_cl.exe test-plugin run component
 
 # Add and trigger port forwarding rule
-.\osfx-c99\build\osfx_cli_cl.exe port-forwarder add-rule r1 udp 8080 tcp 9000
-.\osfx-c99\build\osfx_cli_cl.exe port-forwarder forward udp 8080 A1B2
+.\\build\osfx_cli_cl.exe port-forwarder add-rule r1 udp 8080 tcp 9000
+.\\build\osfx_cli_cl.exe port-forwarder forward udp 8080 A1B2
 ```
 
 ## Multi-Compiler Executable Examples
 
 Test scripts produce different CLI executables based on compiler:
 
-- `clang`: `osfx-c99/build/osfx_cli_clang.exe`
-- `gcc`: `osfx-c99/build/osfx_cli_gcc.exe`
-- `cl`: `osfx-c99/build/osfx_cli_cl.exe`
+- `clang`: `build/osfx_cli_clang.exe`
+- `gcc`: `build/osfx_cli_gcc.exe`
+- `cl`: `build/osfx_cli_cl.exe`
 
 ```powershell
 # clang artifact example
-.\osfx-c99\build\osfx_cli_clang.exe plugin-list
+.\\build\osfx_cli_clang.exe plugin-list
 
 # gcc artifact example
-.\osfx-c99\build\osfx_cli_gcc.exe transport-status
+.\\build\osfx_cli_gcc.exe transport-status
 ```
 
 ## Recommended Workflow Example
 
 ```powershell
 # 1) View plugins
-.\osfx-c99\build\osfx_cli_cl.exe plugin-list
+.\\build\osfx_cli_cl.exe plugin-list
 
 # 2) Load plugins
-.\osfx-c99\build\osfx_cli_cl.exe plugin-load transport
-.\osfx-c99\build\osfx_cli_cl.exe plugin-load test_plugin
+.\\build\osfx_cli_cl.exe plugin-load transport
+.\\build\osfx_cli_cl.exe plugin-load test_plugin
 
 # 3) Execute checks
-.\osfx-c99\build\osfx_cli_cl.exe transport-status
-.\osfx-c99\build\osfx_cli_cl.exe test-plugin run component
+.\\build\osfx_cli_cl.exe transport-status
+.\\build\osfx_cli_cl.exe test-plugin run component
 
 # 4) Add forwarding rule and trigger
-.\osfx-c99\build\osfx_cli_cl.exe plugin-load port_forwarder
-.\osfx-c99\build\osfx_cli_cl.exe port-forwarder add-rule r1 udp 8080 tcp 9000
-.\osfx-c99\build\osfx_cli_cl.exe port-forwarder forward udp 8080 A1B2C3
+.\\build\osfx_cli_cl.exe plugin-load port_forwarder
+.\\build\osfx_cli_cl.exe port-forwarder add-rule r1 udp 8080 tcp 9000
+.\\build\osfx_cli_cl.exe port-forwarder forward udp 8080 A1B2C3
 ```
 
 ## Output Conventions
@@ -77,4 +79,5 @@ Examples:
 
 - Success: `ok=1 loaded=transport`
 - Failure: `error=unknown_command`
+
 

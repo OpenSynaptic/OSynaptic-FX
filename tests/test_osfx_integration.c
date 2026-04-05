@@ -121,6 +121,53 @@ int main(void) {
         return 1;
     }
 
+    sensors[1].value = 56.0;
+    ok = osfx_core_encode_multi_sensor_packet_auto(
+        &tx_state, 42U, 2U, 1710000011ULL, "NODE_A", "ONLINE", sensors, 2U,
+        packet, sizeof(packet), &packet_len, &cmd
+    );
+    if (!ok || cmd != OSFX_CMD_DATA_DIFF) {
+        printf("[FAIL] multi-sensor DIFF encode failed cmd=%u\n", (unsigned)cmd);
+        return 1;
+    }
+
+    ok = osfx_core_decode_multi_sensor_packet_auto(
+        &rx_state, packet, (size_t)packet_len,
+        node_id, sizeof(node_id), node_state, sizeof(node_state),
+        out_sensors, 2U, &out_sensor_count, &meta
+    );
+    if (!ok || meta.cmd != OSFX_CMD_DATA_DIFF || out_sensor_count != 2U) {
+        printf("[FAIL] multi-sensor DIFF decode failed cmd=%u count=%llu\n", (unsigned)meta.cmd, (unsigned long long)out_sensor_count);
+        return 1;
+    }
+    if (out_sensors[1].value != 56.0) {
+        printf("[FAIL] multi-sensor DIFF value mismatch value=%f\n", out_sensors[1].value);
+        return 1;
+    }
+
+    ok = osfx_core_encode_multi_sensor_packet_auto(
+        &tx_state, 42U, 2U, 1710000012ULL, "NODE_A", "ONLINE", sensors, 2U,
+        packet, sizeof(packet), &packet_len, &cmd
+    );
+    if (!ok || cmd != OSFX_CMD_DATA_HEART) {
+        printf("[FAIL] multi-sensor HEART encode failed cmd=%u\n", (unsigned)cmd);
+        return 1;
+    }
+
+    ok = osfx_core_decode_multi_sensor_packet_auto(
+        &rx_state, packet, (size_t)packet_len,
+        node_id, sizeof(node_id), node_state, sizeof(node_state),
+        out_sensors, 2U, &out_sensor_count, &meta
+    );
+    if (!ok || meta.cmd != OSFX_CMD_DATA_HEART || out_sensor_count != 2U) {
+        printf("[FAIL] multi-sensor HEART decode failed cmd=%u count=%llu\n", (unsigned)meta.cmd, (unsigned long long)out_sensor_count);
+        return 1;
+    }
+    if (out_sensors[1].value != 56.0) {
+        printf("[FAIL] multi-sensor HEART value mismatch value=%f\n", out_sensors[1].value);
+        return 1;
+    }
+
     if (osfx_build_secure_dict_ready(42U, 1710000010ULL, ctrl, sizeof(ctrl)) != 13) {
         printf("[FAIL] secure dict builder failed\n");
         return 1;
