@@ -152,10 +152,16 @@ jobs:
       - name: Build libosfx_riscv.a
         run: |
           mkdir -p build-riscv/obj
-          PICOLIBC_INC=$(riscv64-unknown-elf-gcc -specs=picolibc.specs -march=rv32imc -mabi=ilp32 -print-sysroot 2>/dev/null)/usr/include
+          # gcc's own built-ins (stddef.h, stdarg.h, stdbool.h ...)
+          GCC_INC=$(riscv64-unknown-elf-gcc -march=rv32imc -mabi=ilp32 -print-file-name=include)
+          # picolibc headers installed by picolibc-riscv64-unknown-elf
+          PICOLIBC_INC=$(find /usr/lib/picolibc/riscv64-unknown-elf -name 'stdint.h' 2>/dev/null | head -1 | xargs dirname)
           for c in src/*.c; do
             riscv64-unknown-elf-gcc -march=rv32imc -mabi=ilp32 \
-              -std=c99 -Os -ffreestanding -isystem "$PICOLIBC_INC" -Iinclude \
+              -std=c99 -Os -ffreestanding -nostdinc \
+              -isystem "$GCC_INC" \
+              -isystem "$PICOLIBC_INC" \
+              -Iinclude \
               -DOSFX_ENABLE_FILE_IO=0 -DOSFX_ENABLE_CLI=0 \
               -c "$c" -o "build-riscv/obj/$(basename "${c%.c}").o"
           done
