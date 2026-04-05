@@ -352,13 +352,16 @@ jobs:
         run: |
           VER="${{ env.RELEASE_TAG }}"
           VER="${VER#v}"
-          LIB="OSynaptic-FX"
+
+          # Read canonical library name from library.properties (Arduino spec: ZIP name == library name)
+          LIB=$(grep -m1 '^name=' library.properties | cut -d= -f2- | tr -d '[:space:]')
           ZIP="${LIB}-${VER}.zip"
           PKG="${LIB}"
 
-          # --- metadata ---
+          # --- metadata (patch version in library.properties to match release tag) ---
           mkdir -p "${PKG}"
-          cp library.properties README.md LICENSE keywords.txt "${PKG}/"
+          sed "s/^version=.*/version=${VER}/" library.properties > "${PKG}/library.properties"
+          cp README.md LICENSE keywords.txt "${PKG}/"
 
           # --- headers (include/) + examples ---
           cp -r include examples "${PKG}/"
