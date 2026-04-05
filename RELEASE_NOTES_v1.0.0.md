@@ -123,9 +123,12 @@ Standalone libraries for host development are also published as separate release
 
 | Asset | Platform |
 |---|---|
-| `libosfx_x86_64_linux.a` | Linux x86\_64 |
-| `libosfx_x86_64_windows.lib` | Windows x86\_64 (MinGW) |
-| `libosfx_x86_64_macos.a` | macOS x86\_64 |
+| `osfx-{version}-linux-x86_64.a` | Linux x86\_64 |
+| `osfx-{version}-windows-x86_64.lib` | Windows x86\_64 (MinGW) |
+| `osfx-{version}-macos-x86_64.a` | macOS x86\_64 (Intel) |
+| `osfx-{version}-macos-arm64.a` | macOS ARM64 (Apple Silicon) |
+| `osfx-{version}-android-arm64.a` | Android arm64-v8a (API 21+) |
+| `osfx-{version}-ios-arm64.a` | iOS arm64 (iPhone / iPad) |
 
 ---
 
@@ -176,4 +179,4 @@ All code in this release passes the three-compiler quality gate (**GCC · Clang 
 
 ---
 
-*MIT License — contributions welcome, see [CONTRIBUTING.md](CONTRIBUTING.md)*
+*Apache-2.0 License — contributions welcome, see [CONTRIBUTING.md](CONTRIBUTING.md)*
