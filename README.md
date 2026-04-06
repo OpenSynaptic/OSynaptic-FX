@@ -3,10 +3,11 @@
 **Embedded-first OpenSynaptic C99 runtime for Arduino** — encodes multi-sensor readings into a compact binary packet, sends FULL or delta-DIFF frames, and integrates directly with the [OpenSynaptic](../OpenSynaptic/README.md) server over any transport (UDP / TCP / UART / LoRa / MQTT / CAN).
 
 ![C99](https://img.shields.io/badge/C-99-00599C?logo=c&logoColor=white)
-![Version](https://img.shields.io/badge/version-1.0.1-2E8B57)
+![Version](https://img.shields.io/badge/version-1.0.0-2E8B57)
 ![Arduino](https://img.shields.io/badge/Arduino-Library-00979D?logo=arduino&logoColor=white)
 ![Status](https://img.shields.io/badge/status-stable-2E8B57)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
+[![Arduino Library](https://www.ardu-badge.com/badge/OSynaptic-FX.svg?)](https://www.ardu-badge.com/OSynaptic-FX)
 
 ![ESP32](https://img.shields.io/badge/ESP32-supported-E7352C?logo=espressif&logoColor=white)
 ![STM32](https://img.shields.io/badge/STM32-supported-03234B?logo=stmicroelectronics&logoColor=white)
@@ -376,30 +377,26 @@ Each archive is compiled with the matching `cmake/arch_presets/<preset>.cmake` m
 
 ### Start here
 
-- [docs/README.md](docs/README.md) — documentation root and module index (also on [documentation site](https://opensynaptic.github.io/docs/osynaptic-fx/en_GB/README))
-- [docs/SUMMARY.md](docs/SUMMARY.md) — structured summary of all modules (also on [documentation site](https://opensynaptic.github.io/docs/osynaptic-fx/en_GB/SUMMARY))
+- [docs/README.md](docs/README.md) — documentation root and module index
+- [docs/SUMMARY.md](docs/SUMMARY.md) — structured summary of all modules
 
 ### Integration guides
 
-- [docs/17-glue-step-by-step.md](docs/17-glue-step-by-step.md) — glue API integration walkthrough (also on [documentation site](https://opensynaptic.github.io/docs/osynaptic-fx/en_GB/17-glue-step-by-step))
-- [docs/18-data-format-specification.md](docs/18-data-format-specification.md) — normative data format (also on [documentation site](https://opensynaptic.github.io/docs/osynaptic-fx/en_GB/18-data-format-specification))
-- [docs/19-input-specification.md](docs/19-input-specification.md) — sensor input field specification (also on [documentation site](https://opensynaptic.github.io/docs/osynaptic-fx/en_GB/19-input-specification))
+- [docs/17-glue-step-by-step.md](docs/17-glue-step-by-step.md) — glue API integration walkthrough
+- [docs/18-data-format-specification.md](docs/18-data-format-specification.md) — normative data format
+- [docs/19-input-specification.md](docs/19-input-specification.md) — sensor input field specification
 
 ### Protocol references
 
-- [Data Format Specification](https://opensynaptic.github.io/docs/osynaptic-fx/en_GB/18-data-format-specification) — strict binary packet format
-- [SEND API Index](https://opensynaptic.github.io/docs/opensynaptic/en_GB/api/api-SEND_API_INDEX) — send API index
-- [SEND API Reference](https://opensynaptic.github.io/docs/opensynaptic/en_GB/api/api-SEND_API_REFERENCE) — send API reference
-- [Quick Start Send Examples](https://opensynaptic.github.io/docs/opensynaptic/en_GB/guides/guides-QUICK_START_SEND_EXAMPLES) — send examples
+- [DATA_FORMATS_SPEC.md](DATA_FORMATS_SPEC.md) — strict binary packet format
+- [SEND_API_INDEX.md](SEND_API_INDEX.md) — send API index
+- [SEND_API_REFERENCE.md](SEND_API_REFERENCE.md) — send API reference
+- [QUICK_START_SEND_EXAMPLES.md](QUICK_START_SEND_EXAMPLES.md) — send examples
 
 ### Server side (OpenSynaptic)
 
 - [../OpenSynaptic/README.md](../OpenSynaptic/README.md) — Python / Rust server that receives OSynaptic-FX packets
-- [v1.2.0 Release Notes](https://opensynaptic.github.io/docs/opensynaptic/en_GB/releases/releases-v1.2.0) — OpenSynaptic v1.2.0 RSCore performance baseline (compatible with OSynaptic-FX v1.0.1)
-
-### Arduino Easy API
-
-- [docs/20-arduino-easy-api.md](docs/20-arduino-easy-api.md) — Quick-start Arduino Easy API reference (also on [documentation site](https://opensynaptic.github.io/docs/osynaptic-fx/en_GB/20-arduino-easy-api))
+- [../OpenSynaptic/README.md](../OpenSynaptic/README.md) — Python / Rust server that receives OSynaptic-FX packets
 
 ---
 
@@ -408,6 +405,7 @@ Each archive is compiled with the matching `cmake/arch_presets/<preset>.cmake` m
 1. Read `DATA_FORMATS_SPEC.md` before touching any encode/decode path.
 2. All changes to `src/` must keep both `scripts/build.ps1 -Compiler auto` (PowerShell) and `cmake -B build && cmake --build build` (CMake) green.
 3. Run native tests: `powershell -ExecutionPolicy Bypass -File scripts/test.ps1 -Compiler auto`
+4. This is the **single source of truth** — do not sync changes to `OSynaptic-FX/` (that repository is deprecated).
 4. This is the **single source of truth** — do not sync changes to `OSynaptic-FX/` (that repository is deprecated).
 5. Update docs at the closest ownership level — do not duplicate content between README and `docs/`.
 
