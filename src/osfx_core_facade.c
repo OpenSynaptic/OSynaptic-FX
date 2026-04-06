@@ -52,13 +52,18 @@ int osfx_core_encode_sensor_packet(
     double std_value = 0.0;
     char std_unit[16];
     char value_b62[64];
-    char body[192];
+    char aid_str[11];
+    char ts_b64[9];
+    char body[256];
     long long scaled;
     size_t sid_len;
     size_t unit_len;
     size_t b62_len;
+    size_t aid_len;
     size_t body_len;
     int pkt_len;
+    int wlen;
+    size_t off;
 
     if (!sensor_id || !input_unit || !out_packet || !out_packet_len) {
         return 0;
@@ -73,19 +78,42 @@ int osfx_core_encode_sensor_packet(
         return 0;
     }
 
-    sid_len = strlen(sensor_id);
-    unit_len = strlen(std_unit);
-    b62_len = strlen(value_b62);
-    body_len = sid_len + 1U + unit_len + 1U + b62_len;
-    if (body_len + 1U > sizeof(body)) {
-        return 0;
-    }
+    wlen = osfx_u32toa(source_aid, aid_str, sizeof(aid_str));
+    if (wlen <= 0) { return 0; }
+    aid_len = (size_t)wlen;
 
-    memcpy(body, sensor_id, sid_len);
-    body[sid_len] = '|';
-    memcpy(body + sid_len + 1U, std_unit, unit_len);
-    body[sid_len + 1U + unit_len] = '|';
-    memcpy(body + sid_len + 1U + unit_len + 1U, value_b62, b62_len);
+    osfx_b64url_ts6(timestamp_raw, ts_b64);
+
+    sid_len  = strlen(sensor_id);
+    unit_len = strlen(std_unit);
+    b62_len  = strlen(value_b62);
+
+    /*
+     * body = "{aid}.U.{ts_b64}|{sid}>U.{unit}:{b62}|"
+     * OpenSynaptic wire body format.
+     */
+    body_len = aid_len + 3U        /* ".U." */
+             + 8U                  /* ts_b64 */
+             + 1U                  /* '|' header sentinel */
+             + sid_len + 3U        /* sid + ">U." */
+             + unit_len + 1U       /* unit + ':' */
+             + b62_len + 1U;       /* b62 + '|' trailer */
+
+    if (body_len + 1U > sizeof(body)) { return 0; }
+
+    off = 0;
+    /* Header segment: "{aid}.U.{ts_b64}|" */
+    memcpy(body + off, aid_str, aid_len); off += aid_len;
+    body[off++] = '.'; body[off++] = 'U'; body[off++] = '.';
+    memcpy(body + off, ts_b64, 8);        off += 8;
+    body[off++] = '|';
+    /* Sensor segment: "{sid}>U.{unit}:{b62}|" */
+    memcpy(body + off, sensor_id, sid_len); off += sid_len;
+    body[off++] = '>'; body[off++] = 'U'; body[off++] = '.';
+    memcpy(body + off, std_unit, unit_len); off += unit_len;
+    body[off++] = ':';
+    memcpy(body + off, value_b62, b62_len); off += b62_len;
+    body[off++] = '|';
 
     pkt_len = osfx_packet_encode_full(
         (uint8_t)OSFX_CMD_DATA_FULL,
@@ -115,9 +143,13 @@ int osfx_core_decode_sensor_body(
     char* out_unit,
     size_t out_unit_cap
 ) {
-    size_t i;
-    size_t p1 = (size_t)(-1);
-    size_t p2 = (size_t)(-1);
+    size_t p;
+    size_t sid_start;
+    size_t gt_pos;   /* position of '>'            */
+    size_t dot_pos;  /* position of '.' after state */
+    size_t col_pos;  /* position of ':'             */
+    size_t end_pos;  /* position of trailing '|'    */
+    size_t seg_len;
     char tmp[64];
     int ok = 0;
     long long scaled;
@@ -126,43 +158,57 @@ int osfx_core_decode_sensor_body(
         return 0;
     }
 
-    for (i = 0; i < body_len; ++i) {
-        if (body[i] == '|') {
-            if (p1 == (size_t)(-1)) {
-                p1 = i;
-            } else {
-                p2 = i;
-                break;
-            }
-        }
-    }
+    /*
+     * Wire body format: "{aid}.{status}.{ts_b64}|{sid}>{state}.{unit}:{b62}|"
+     *
+     * Step 1: Skip body header - find first '|'.
+     */
+    p = 0;
+    while (p < body_len && body[p] != (uint8_t)'|') { ++p; }
+    if (p >= body_len) { return 0; }
+    ++p; /* now at first char of sensor segment */
 
-    if (p1 == (size_t)(-1) || p2 == (size_t)(-1) || p1 == 0 || p2 <= p1 + 1U || p2 + 1U >= body_len) {
-        return 0;
-    }
+    sid_start = p;
 
-    if (p1 + 1U > out_sensor_id_cap) {
-        return 0;
-    }
-    memcpy(out_sensor_id, body, p1);
-    out_sensor_id[p1] = '\0';
+    /* Step 2: Find '>' - end of sensor_id. */
+    gt_pos = p;
+    while (gt_pos < body_len && body[gt_pos] != (uint8_t)'>') { ++gt_pos; }
+    if (gt_pos >= body_len || gt_pos <= sid_start) { return 0; }
 
-    if ((p2 - p1) > out_unit_cap) {
-        return 0;
-    }
-    memcpy(out_unit, body + p1 + 1U, p2 - p1 - 1U);
-    out_unit[p2 - p1 - 1U] = '\0';
+    /* --- sensor_id --------------------------------------------------- */
+    seg_len = gt_pos - sid_start;
+    if (seg_len == 0 || seg_len + 1U > out_sensor_id_cap) { return 0; }
+    memcpy(out_sensor_id, body + sid_start, seg_len);
+    out_sensor_id[seg_len] = '\0';
 
-    if (body_len - (p2 + 1U) >= sizeof(tmp)) {
-        return 0;
-    }
-    memcpy(tmp, body + p2 + 1U, body_len - (p2 + 1U));
-    tmp[body_len - (p2 + 1U)] = '\0';
+    /* Step 3: Skip state - find '.' after '>'. */
+    dot_pos = gt_pos + 1U;
+    while (dot_pos < body_len && body[dot_pos] != (uint8_t)'.') { ++dot_pos; }
+    if (dot_pos >= body_len) { return 0; }
+
+    /* Step 4: Find ':' - end of unit code. */
+    col_pos = dot_pos + 1U;
+    while (col_pos < body_len && body[col_pos] != (uint8_t)':') { ++col_pos; }
+    if (col_pos >= body_len) { return 0; }
+
+    /* --- unit -------------------------------------------------------- */
+    seg_len = col_pos - (dot_pos + 1U);
+    if (seg_len == 0 || seg_len + 1U > out_unit_cap) { return 0; }
+    memcpy(out_unit, body + dot_pos + 1U, seg_len);
+    out_unit[seg_len] = '\0';
+
+    /* Step 5: Find trailing '|' - end of b62 value. */
+    end_pos = col_pos + 1U;
+    while (end_pos < body_len && body[end_pos] != (uint8_t)'|') { ++end_pos; }
+
+    /* --- b62 value --------------------------------------------------- */
+    seg_len = end_pos - (col_pos + 1U);
+    if (seg_len == 0 || seg_len >= sizeof(tmp)) { return 0; }
+    memcpy(tmp, body + col_pos + 1U, seg_len);
+    tmp[seg_len] = '\0';
 
     scaled = osfx_b62_decode_i64(tmp, &ok);
-    if (!ok) {
-        return 0;
-    }
+    if (!ok) { return 0; }
 
     *out_value = (double)scaled / OSFX_VALUE_SCALE;
     return 1;
@@ -185,9 +231,11 @@ int osfx_core_encode_sensor_packet_auto(
     char std_unit[OSFX_TMPL_UNIT_MAX];
     char value_b62[OSFX_TMPL_VALUE_MAX];
     char ts_token[OSFX_TMPL_TS_MAX];
+    char aid_str[11];
     osfx_sensor_slot slot;
     char body[256];
     long long scaled;
+    int wlen;
 
     if (!st || !sensor_id || !input_unit || !out_packet || !out_packet_len) {
         return 0;
@@ -202,15 +250,16 @@ int osfx_core_encode_sensor_packet_auto(
         return 0;
     }
 
-    if (snprintf(ts_token, sizeof(ts_token), "%llu", (unsigned long long)timestamp_raw) <= 0) {
-        return 0;
-    }
+    /* AID decimal string + base64url timestamp (OpenSynaptic wire format) */
+    wlen = osfx_u32toa(source_aid, aid_str, sizeof(aid_str));
+    if (wlen <= 0) { return 0; }
+    osfx_b64url_ts6(timestamp_raw, ts_token);
 
     memset(&slot, 0, sizeof(slot));
     if (!copy_text(slot.sensor_id, sizeof(slot.sensor_id), sensor_id)) {
         return 0;
     }
-    if (!copy_text(slot.sensor_state, sizeof(slot.sensor_state), "OK")) {
+    if (!copy_text(slot.sensor_state, sizeof(slot.sensor_state), "U")) {
         return 0;
     }
     if (!copy_text(slot.sensor_unit, sizeof(slot.sensor_unit), std_unit)) {
@@ -220,7 +269,7 @@ int osfx_core_encode_sensor_packet_auto(
         return 0;
     }
 
-    if (!osfx_template_encode("NODE", "ONLINE", ts_token, &slot, 1, body, sizeof(body))) {
+    if (!osfx_template_encode(aid_str, "U", ts_token, &slot, 1, body, sizeof(body))) {
         return 0;
     }
 
@@ -306,13 +355,18 @@ int osfx_core_encode_sensor_packet_secure(
     double std_value = 0.0;
     char std_unit[16];
     char value_b62[64];
-    char body[192];
+    char aid_str[11];
+    char ts_b64[9];
+    char body[256];
     long long scaled;
     size_t sid_len;
     size_t unit_len;
     size_t b62_len;
+    size_t aid_len;
     size_t body_len;
     int pkt_len;
+    int wlen;
+    size_t off;
 
     if (!secure_store || !sensor_id || !input_unit || !out_packet || !out_packet_len) {
         return 0;
@@ -328,18 +382,30 @@ int osfx_core_encode_sensor_packet_secure(
         return 0;
     }
 
-    sid_len = strlen(sensor_id);
+    wlen = osfx_u32toa(source_aid, aid_str, sizeof(aid_str));
+    if (wlen <= 0) { return 0; }
+    aid_len = (size_t)wlen;
+
+    osfx_b64url_ts6(timestamp_raw, ts_b64);
+
+    sid_len  = strlen(sensor_id);
     unit_len = strlen(std_unit);
-    b62_len = strlen(value_b62);
-    body_len = sid_len + 1U + unit_len + 1U + b62_len;
-    if (body_len + 1U > sizeof(body)) {
-        return 0;
-    }
-    memcpy(body, sensor_id, sid_len);
-    body[sid_len] = '|';
-    memcpy(body + sid_len + 1U, std_unit, unit_len);
-    body[sid_len + 1U + unit_len] = '|';
-    memcpy(body + sid_len + 1U + unit_len + 1U, value_b62, b62_len);
+    b62_len  = strlen(value_b62);
+
+    body_len = aid_len + 3U + 8U + 1U + sid_len + 3U + unit_len + 1U + b62_len + 1U;
+    if (body_len + 1U > sizeof(body)) { return 0; }
+
+    off = 0;
+    memcpy(body + off, aid_str, aid_len); off += aid_len;
+    body[off++] = '.'; body[off++] = 'U'; body[off++] = '.';
+    memcpy(body + off, ts_b64, 8);        off += 8;
+    body[off++] = '|';
+    memcpy(body + off, sensor_id, sid_len); off += sid_len;
+    body[off++] = '>'; body[off++] = 'U'; body[off++] = '.';
+    memcpy(body + off, std_unit, unit_len); off += unit_len;
+    body[off++] = ':';
+    memcpy(body + off, value_b62, b62_len); off += b62_len;
+    body[off++] = '|';
 
     pkt_len = osfx_packet_encode_ex(
         (uint8_t)OSFX_CMD_DATA_FULL,

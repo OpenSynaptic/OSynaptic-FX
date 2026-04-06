@@ -117,3 +117,49 @@ uint16_t osfx_crc16_ccitt(const uint8_t* data, size_t len, uint16_t poly, uint16
     return crc;
 }
 
+int osfx_u32toa(uint32_t n, char* buf, size_t cap) {
+    char tmp[11];
+    size_t idx = 0;
+    size_t i;
+    if (!buf || cap < 2) { return 0; }
+    if (n == 0) { buf[0] = '0'; buf[1] = '\0'; return 1; }
+    while (n > 0 && idx < sizeof(tmp)) {
+        tmp[idx++] = (char)('0' + (int)(n % 10));
+        n /= 10;
+    }
+    if (idx >= cap) { return 0; }
+    for (i = 0; i < idx; ++i) {
+        buf[i] = tmp[idx - 1 - i];
+    }
+    buf[idx] = '\0';
+    return (int)idx;
+}
+
+static const char OSFX_B64URL[] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+void osfx_b64url_ts6(uint64_t timestamp_raw, char out[9]) {
+    uint8_t b[6];
+    uint32_t g1;
+    uint32_t g2;
+    b[0] = (uint8_t)((timestamp_raw >> 40) & 0xFFU);
+    b[1] = (uint8_t)((timestamp_raw >> 32) & 0xFFU);
+    b[2] = (uint8_t)((timestamp_raw >> 24) & 0xFFU);
+    b[3] = (uint8_t)((timestamp_raw >> 16) & 0xFFU);
+    b[4] = (uint8_t)((timestamp_raw >>  8) & 0xFFU);
+    b[5] = (uint8_t)( timestamp_raw        & 0xFFU);
+    /* Group 1: bytes 0,1,2 */
+    g1 = ((uint32_t)b[0] << 16) | ((uint32_t)b[1] << 8) | b[2];
+    out[0] = OSFX_B64URL[(g1 >> 18) & 0x3Fu];
+    out[1] = OSFX_B64URL[(g1 >> 12) & 0x3Fu];
+    out[2] = OSFX_B64URL[(g1 >>  6) & 0x3Fu];
+    out[3] = OSFX_B64URL[ g1        & 0x3Fu];
+    /* Group 2: bytes 3,4,5 */
+    g2 = ((uint32_t)b[3] << 16) | ((uint32_t)b[4] << 8) | b[5];
+    out[4] = OSFX_B64URL[(g2 >> 18) & 0x3Fu];
+    out[5] = OSFX_B64URL[(g2 >> 12) & 0x3Fu];
+    out[6] = OSFX_B64URL[(g2 >>  6) & 0x3Fu];
+    out[7] = OSFX_B64URL[ g2        & 0x3Fu];
+    out[8] = '\0';
+}
+
