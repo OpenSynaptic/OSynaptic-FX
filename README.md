@@ -1,5 +1,7 @@
 # OSynaptic-FX
 
+简体中文说明请见 [README.zh.md](README.zh.md)。
+
 **Embedded-first OpenSynaptic C99 runtime for Arduino** — encodes multi-sensor readings into a compact binary packet, sends FULL or delta-DIFF frames, and integrates directly with the [OpenSynaptic](../OpenSynaptic/README.md) server over any transport (UDP / TCP / UART / LoRa / MQTT / CAN).
 
 ![C99](https://img.shields.io/badge/C-99-00599C?logo=c&logoColor=white)
