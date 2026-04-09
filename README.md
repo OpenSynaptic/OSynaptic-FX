@@ -154,7 +154,6 @@ See [examples/ESP32WiFiMultiSensorAuto](examples/ESP32WiFiMultiSensorAuto/ESP32W
 ## Tuning for Your Target
 
 All limits are overridable before including any OSynaptic-FX header. Edit **`include/osfx_user_config.h`** (or pass `-D` flags to your build system):
-All limits are overridable before including any OSynaptic-FX header. Edit **`include/osfx_user_config.h`** (or pass `-D` flags to your build system):
 
 ```c
 /* include/osfx_user_config.h  — uncomment to override defaults */
@@ -239,7 +238,7 @@ All examples compile with `arduino-cli compile`. ESP32-specific examples require
 ## Repository Map
 
 ```
-OSynaptic-FX-Arduino/           ← single source of truth
+OSynaptic-FX/                   ← single source of truth
 ├── CMakeLists.txt          # CMake build (native / cross-compile)
 ├── cmake/
 │   ├── osfx-c99Config.cmake.in
@@ -247,7 +246,6 @@ OSynaptic-FX-Arduino/           ← single source of truth
 ├── library.properties      # Arduino Library Manager metadata
 ├── keywords.txt            # IDE syntax highlighting
 ├── src/
-│   ├── OSynapticFX.h      # Umbrella include (use this in sketches)
 │   ├── OSynapticFX.h      # Umbrella include (use this in sketches)
 │   ├── *.c                 # C99 implementation (21 files shared with CMake)
 │   ├── osfx_easy.c         # High-level easy API (Arduino + CMake)
