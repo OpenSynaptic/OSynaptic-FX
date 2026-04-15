@@ -14,6 +14,7 @@ This folder contains practical Arduino use cases for OSynaptic-FX.
 - `BootCliOrRun`: boot 10 s serial-triggered CLI mode, otherwise persistent run mode
 - `ESP32WiFiMultiSensorAuto`: full Wi-Fi UDP node with LittleFS ID persistence and 4-sensor auto DIFF
 - `QuickBench`: ESP32-focused dual-core packet encode throughput benchmark
+- `ESP32ReportBench75B`: ESP32 report-proof benchmark, internal loop only and one-shot summary output
 
 ## Quick Compile (Arduino CLI)
 
@@ -28,4 +29,5 @@ arduino-cli compile --fqbn arduino:avr:uno    .\examples\MultiSensorNodePacket
 arduino-cli compile --fqbn esp32:esp32:esp32  .\examples\BootCliOrRun
 arduino-cli compile --fqbn esp32:esp32:esp32  .\examples\ESP32WiFiMultiSensorAuto
 arduino-cli compile --fqbn esp32:esp32:esp32  .\examples\QuickBench
+arduino-cli compile --fqbn esp32:esp32:esp32  .\examples\ESP32ReportBench75B
 ```
