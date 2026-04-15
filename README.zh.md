@@ -1,5 +1,7 @@
 # OSynaptic-FX
 
+English README: [README.md](README.md)
+
 **面向嵌入式的 OpenSynaptic C99 运行库（Arduino 优先）**。它可以把多传感器读数编码为紧凑的二进制数据包，自动发送 FULL 或增量 DIFF 帧，并通过任意传输层（UDP / TCP / UART / LoRa / MQTT / CAN）与 [OpenSynaptic](../OpenSynaptic/README.md) 服务端直接互通。
 
 ![C99](https://img.shields.io/badge/C-99-00599C?logo=c&logoColor=white)
